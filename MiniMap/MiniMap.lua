@@ -13,6 +13,10 @@ local CORNERS = {
     topright = { anchor = TOPRIGHT, relative = TOPRIGHT, x = -24, y = 24 },
     bottomleft = { anchor = BOTTOMLEFT, relative = BOTTOMLEFT, x = 24, y = -24 },
     bottomright = { anchor = BOTTOMRIGHT, relative = BOTTOMRIGHT, x = -24, y = -24 },
+    left = { anchor = LEFT, relative = LEFT, x = 24, y = 0 },
+    right = { anchor = RIGHT, relative = RIGHT, x = -24, y = 0 },
+    top = { anchor = TOP, relative = TOP, x = 0, y = 24 },
+    bottom = { anchor = BOTTOM, relative = BOTTOM, x = 0, y = -24 },
 }
 
 local MiniMap = {
@@ -49,6 +53,14 @@ local function NormalizeCorner(value)
         return "bottomleft"
     elseif value == "br" or value == "bd" or value == "basdroite" or value == "bottom-right" then
         return "bottomright"
+    elseif value == "left" or value == "gauche" or value == "milieugauche" or value == "centre-gauche" then
+        return "left"
+    elseif value == "right" or value == "droite" or value == "milieudroite" or value == "centre-droite" then
+        return "right"
+    elseif value == "top" or value == "haut" or value == "milieuhaut" or value == "centre-haut" then
+        return "top"
+    elseif value == "bottom" or value == "bas" or value == "milieubas" or value == "centre-bas" then
+        return "bottom"
     end
 
     return CORNERS[value] and value or nil
@@ -244,7 +256,7 @@ function MiniMap:UpdatePlayer()
 end
 
 function MiniMap:ShowHelp()
-    Print("/minimap corner tl|tr|bl|br")
+    Print("/minimap corner tl|tr|bl|br|left|right|top|bottom")
     Print("/minimap size 10-40")
     Print("/minimap orientation north|player")
     Print("/minimap zoom 2-8")
@@ -274,9 +286,27 @@ function MiniMap:RegisterSettingsMenu()
         {
             type = "dropdown",
             name = "Position",
-            tooltip = "Coin de l'ecran ou afficher la minimap.",
-            choices = { "Haut gauche", "Haut droite", "Bas gauche", "Bas droite" },
-            choicesValues = { "topleft", "topright", "bottomleft", "bottomright" },
+            tooltip = "Position de la minimap sur l'ecran.",
+            choices = {
+                "Haut gauche",
+                "Haut droite",
+                "Bas gauche",
+                "Bas droite",
+                "Centre gauche",
+                "Centre droite",
+                "Centre haut",
+                "Centre bas",
+            },
+            choicesValues = {
+                "topleft",
+                "topright",
+                "bottomleft",
+                "bottomright",
+                "left",
+                "right",
+                "top",
+                "bottom",
+            },
             getFunc = function()
                 return self.saved.corner
             end,
@@ -334,13 +364,13 @@ function MiniMap:HandleSlashCommand(arguments)
     if command == "corner" or command == "position" then
         local corner = NormalizeCorner(value)
         if not corner then
-            Print("Coin invalide. Utilise tl, tr, bl ou br.")
+            Print("Position invalide. Utilise tl, tr, bl, br, left, right, top ou bottom.")
             return
         end
 
         self.saved.corner = corner
         self:ApplyLayout()
-        Print("Coin: " .. corner)
+        Print("Position: " .. corner)
     elseif command == "size" or command == "taille" then
         local sizePercent = tonumber(value)
         if not sizePercent then
