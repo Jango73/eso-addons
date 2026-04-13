@@ -6,8 +6,11 @@ local DEFAULTS = {
     orientation = "north",
     zoom = 6,
     opacity = 100,
+    debug = false,
     hidden = false,
 }
+
+local EDGE_INDICATOR_TEXTURE = "MiniMap\\media\\edge_indicator_triangle.dds"
 
 local CORNERS = {
     topleft = { anchor = TOPLEFT, relative = TOPLEFT, x = 24, y = 24 },
@@ -103,9 +106,12 @@ local STRINGS = {
 
 local MiniMap = {
     tiles = {},
+    edgeIndicators = {},
+    edgeIndicatorOrder = {},
     tileCount = 0,
     currentMapName = nil,
     nextMapRefreshMs = 0,
+    nextQuestBreadcrumbRefreshMs = 0,
 }
 
 local function Clamp(value, minValue, maxValue)
@@ -133,6 +139,24 @@ local function GetLanguage()
     end
 
     return "en"
+end
+
+local function GetRotationFromUp(dx, dy)
+    if math.atan2 then
+        return math.atan2(dx, dy)
+    end
+
+    return math.atan(dx, dy)
+end
+
+local function RotateVector(x, y, radians)
+    if radians == 0 then
+        return x, y
+    end
+
+    local cos = math.cos(radians)
+    local sin = math.sin(radians)
+    return (x * cos) - (y * sin), (x * sin) + (y * cos)
 end
 
 local function NormalizeCorner(value)
@@ -187,10 +211,38 @@ function MiniMap:CreateControls()
     player:SetTexture("EsoUI/Art/Icons/mapKey/mapKey_player.dds")
     player:SetDrawLayer(DL_OVERLAY)
 
+    local debugWindow = WINDOW_MANAGER:CreateTopLevelWindow("MiniMapDebugWindow")
+    debugWindow:SetDrawTier(DT_HIGH)
+    debugWindow:SetMouseEnabled(false)
+    debugWindow:SetHidden(true)
+
+    local debugBackground = WINDOW_MANAGER:CreateControl("MiniMapDebugBackground", debugWindow, CT_BACKDROP)
+    debugBackground:SetAnchorFill(debugWindow)
+    debugBackground:SetCenterColor(0, 0, 0, 0.78)
+    debugBackground:SetEdgeColor(1, 1, 1, 0.6)
+    debugBackground:SetEdgeTexture("", 1, 1, 1)
+
+    local debugLabel = WINDOW_MANAGER:CreateControl("MiniMapDebugLabel", debugWindow, CT_LABEL)
+    debugLabel:SetAnchor(TOPLEFT, debugWindow, TOPLEFT, 8, 8)
+    debugLabel:SetFont("ZoFontGame")
+    debugLabel:SetColor(1, 1, 1, 1)
+    debugLabel:SetHorizontalAlignment(TEXT_ALIGN_LEFT)
+    debugLabel:SetVerticalAlignment(TEXT_ALIGN_TOP)
+
     self.root = root
     self.background = background
     self.map = map
     self.player = player
+    self.debugWindow = debugWindow
+    self.debugBackground = debugBackground
+    self.debugLabel = debugLabel
+
+    self:RegisterEdgeIndicator("activeQuest", {
+        color = { 1, 1, 1, 1 },
+        provider = function()
+            return self:GetActiveQuestTargetPosition()
+        end,
+    })
 end
 
 function MiniMap:ApplyLayout()
@@ -206,13 +258,29 @@ function MiniMap:ApplyLayout()
     self.root:SetDimensions(self.size, self.size)
     self.map:SetDimensions(self.mapSize, self.mapSize)
     self.root:SetAlpha(Clamp(self.saved.opacity or DEFAULTS.opacity, 20, 100) / 100)
+    self:ApplyDebugLayout()
     self:ApplyCircularClip()
 
     local playerSize = Clamp(math.floor(self.size * 0.12), 18, 30)
     self.player:SetDimensions(playerSize, playerSize)
 
+    for _, indicator in pairs(self.edgeIndicators) do
+        indicator.control:SetDimensions(playerSize, playerSize)
+    end
+
     self:LayoutTiles()
     self:UpdatePlayer()
+end
+
+function MiniMap:ApplyDebugLayout()
+    if not self.debugWindow then
+        return
+    end
+
+    self.debugWindow:ClearAnchors()
+    self.debugWindow:SetAnchor(TOPRIGHT, self.root, BOTTOMRIGHT, 0, 12)
+    self.debugWindow:SetDimensions(760, 260)
+    self.debugLabel:SetDimensions(744, 244)
 end
 
 function MiniMap:ApplyCircularClip()
@@ -229,6 +297,185 @@ end
 function MiniMap:Text(key)
     local strings = STRINGS[self.language] or STRINGS.en
     return strings[key] or STRINGS.en[key] or key
+end
+
+function MiniMap:SetQuestDebug(values)
+    self.questDebug = values
+    self:UpdateDebugLabel()
+end
+
+function MiniMap:UpdateDebugLabel()
+    if not self.debugWindow or not self.debugLabel then
+        return
+    end
+
+    if not self.saved or not self.saved.debug then
+        self.debugWindow:SetHidden(true)
+        return
+    end
+
+    local debug = self.questDebug or {}
+    local text = string.format(
+        "MiniMap debug\nmap=%s\nquest=%s source=%s refreshed=%s\nsteps=%s positions=%s inside=%s\nplayer=%.4f,%.4f target=%s",
+        tostring(self.currentMapName or ""),
+        tostring(debug.questIndex or "nil"),
+        tostring(debug.hasBreadcrumbs or false),
+        tostring(debug.refreshed or false),
+        tostring(debug.steps or 0),
+        tostring(debug.positions or 0),
+        tostring(debug.inside or 0),
+        debug.playerX or 0,
+        debug.playerY or 0,
+        debug.target and string.format("%.4f,%.4f", debug.targetX, debug.targetY) or "nil"
+    )
+
+    self.debugLabel:SetText(text)
+    self.debugWindow:SetHidden(false)
+end
+
+function MiniMap:RegisterEdgeIndicator(id, options)
+    local indicator = self.edgeIndicators[id]
+    if not indicator then
+        local control = WINDOW_MANAGER:CreateControl("MiniMapEdgeIndicator" .. id, self.root, CT_TEXTURE)
+        control:SetTexture(EDGE_INDICATOR_TEXTURE)
+        control:SetDrawLayer(DL_OVERLAY)
+        control:SetHidden(true)
+
+        indicator = {
+            control = control,
+        }
+        self.edgeIndicators[id] = indicator
+        self.edgeIndicatorOrder[#self.edgeIndicatorOrder + 1] = id
+    end
+
+    indicator.provider = options.provider
+    indicator.color = options.color or { 1, 1, 1, 1 }
+
+    indicator.control:SetColor(indicator.color[1], indicator.color[2], indicator.color[3], indicator.color[4] or 1)
+end
+
+function MiniMap:GetFocusedQuestIndex()
+    if QUEST_JOURNAL_MANAGER and QUEST_JOURNAL_MANAGER.GetFocusedQuestIndex then
+        local questIndex = QUEST_JOURNAL_MANAGER:GetFocusedQuestIndex()
+        if questIndex then
+            return questIndex
+        end
+    end
+
+    if GetNumTracked and GetTrackedByIndex and GetTrackedIsAssisted then
+        local numTracked = GetNumTracked()
+        for index = 1, numTracked do
+            local trackType, arg1, arg2 = GetTrackedByIndex(index)
+            if GetTrackedIsAssisted(trackType, arg1, arg2) then
+                return arg1
+            end
+        end
+    end
+
+    return nil
+end
+
+function MiniMap:GetActiveQuestTargetPosition()
+    local questIndex = self:GetFocusedQuestIndex()
+    local debug = {
+        questIndex = questIndex,
+        hasBreadcrumbs = WORLD_MAP_QUEST_BREADCRUMBS ~= nil,
+        playerX = self.playerMapX or 0,
+        playerY = self.playerMapY or 0,
+        steps = 0,
+        positions = 0,
+        inside = 0,
+        refreshed = false,
+        target = false,
+    }
+
+    if not questIndex or not WORLD_MAP_QUEST_BREADCRUMBS or not self.playerMapX or not self.playerMapY then
+        self:SetQuestDebug(debug)
+        return nil
+    end
+
+    local bestX, bestY
+    local bestDistanceSq
+    local mainStepIndex = QUEST_MAIN_STEP_INDEX or 1
+    local numSteps = GetJournalQuestNumSteps and GetJournalQuestNumSteps(questIndex) or mainStepIndex
+    debug.steps = numSteps
+
+    for stepIndex = mainStepIndex, numSteps do
+        local numPositions = WORLD_MAP_QUEST_BREADCRUMBS:GetNumQuestConditionPositions(questIndex, stepIndex)
+        if numPositions then
+            debug.positions = debug.positions + numPositions
+            for conditionIndex = 1, numPositions do
+                local positionData = WORLD_MAP_QUEST_BREADCRUMBS:GetQuestConditionPosition(questIndex, stepIndex, conditionIndex)
+                if positionData and positionData.insideCurrentMapWorld and positionData.xLoc and positionData.yLoc then
+                    debug.inside = debug.inside + 1
+                    local dx = positionData.xLoc - self.playerMapX
+                    local dy = positionData.yLoc - self.playerMapY
+                    local distanceSq = (dx * dx) + (dy * dy)
+                    if not bestDistanceSq or distanceSq < bestDistanceSq then
+                        bestDistanceSq = distanceSq
+                        bestX = positionData.xLoc
+                        bestY = positionData.yLoc
+                    end
+                end
+            end
+        end
+    end
+
+    if bestX and bestY then
+        debug.target = true
+        debug.targetX = bestX
+        debug.targetY = bestY
+        self:SetQuestDebug(debug)
+        return bestX, bestY
+    end
+
+    local now = GetFrameTimeMilliseconds and GetFrameTimeMilliseconds() or 0
+    if WORLD_MAP_QUEST_BREADCRUMBS.RefreshQuest and now >= self.nextQuestBreadcrumbRefreshMs then
+        self.nextQuestBreadcrumbRefreshMs = now + 3000
+        WORLD_MAP_QUEST_BREADCRUMBS:RefreshQuest(questIndex)
+        debug.refreshed = true
+    end
+
+    self:SetQuestDebug(debug)
+    return nil
+end
+
+function MiniMap:UpdateEdgeIndicators(playerX, playerY, mapRotation)
+    local radius = self.size / 2
+    local center = radius
+    local markerSize = Clamp(math.floor(self.size * 0.1), 18, 32)
+
+    for _, id in ipairs(self.edgeIndicatorOrder) do
+        local indicator = self.edgeIndicators[id]
+        local targetX, targetY = indicator.provider()
+
+        if targetX and targetY then
+            local dx = (targetX - playerX) * self.mapSize
+            local dy = (targetY - playerY) * self.mapSize
+            dx, dy = RotateVector(dx, dy, mapRotation)
+
+            local length = math.sqrt((dx * dx) + (dy * dy))
+            if length > 0.0001 then
+                local unitX = dx / length
+                local unitY = dy / length
+                local edgeRadius = radius - (markerSize * 0.34)
+
+                indicator.control:SetDimensions(markerSize, markerSize)
+                indicator.control:ClearAnchors()
+                indicator.control:SetAnchor(CENTER, self.root, TOPLEFT, center + (unitX * edgeRadius), center + (unitY * edgeRadius))
+
+                if indicator.control.SetTextureRotation then
+                    indicator.control:SetTextureRotation(GetRotationFromUp(unitX, unitY))
+                end
+
+                indicator.control:SetHidden(false)
+            else
+                indicator.control:SetHidden(true)
+            end
+        else
+            indicator.control:SetHidden(true)
+        end
+    end
 end
 
 function MiniMap:LayoutTiles()
@@ -315,6 +562,8 @@ function MiniMap:UpdatePlayer()
 
     self.root:SetHidden(false)
     self:ApplyCircularClip()
+    self.playerMapX = normalizedX
+    self.playerMapY = normalizedY
 
     local x = (0.5 * self.size) - (normalizedX * self.mapSize)
     local y = (0.5 * self.size) - (normalizedY * self.mapSize)
@@ -336,6 +585,8 @@ function MiniMap:UpdatePlayer()
         self.map:SetTextureRotation(mapRotation, normalizedX, normalizedY)
     end
 
+    self:UpdateEdgeIndicators(normalizedX, normalizedY, mapRotation)
+
     if self.player.SetTextureRotation then
         if self.saved.orientation == "player" then
             self.player:SetTextureRotation(0)
@@ -352,6 +603,7 @@ function MiniMap:ShowHelp()
     Print(self:Text("helpOpacity"))
     Print(self:Text("helpZoom"))
     Print(self:Text("helpVisibility"))
+    Print("/minimap debug")
     Print("/minimapsettings")
 end
 
@@ -526,6 +778,10 @@ function MiniMap:HandleSlashCommand(arguments)
         self.saved.hidden = false
         self:UpdatePlayer()
         Print(self:Text("shown"))
+    elseif command == "debug" then
+        self.saved.debug = not self.saved.debug
+        self:UpdateDebugLabel()
+        Print("Debug: " .. tostring(self.saved.debug))
     else
         self:ShowHelp()
     end
