@@ -249,6 +249,81 @@ function MiniMap:ShowHelp()
     Print("/minimap orientation north|player")
     Print("/minimap zoom 2-8")
     Print("/minimap hide | /minimap show")
+    Print("/minimapsettings")
+end
+
+function MiniMap:RegisterSettingsMenu()
+    local LAM = LibAddonMenu2
+    if not LAM then
+        Print("LibAddonMenu-2.0 est introuvable: le menu de settings ne sera pas cree.")
+        return
+    end
+
+    local panelData = {
+        type = "panel",
+        name = "MiniMap",
+        displayName = "MiniMap",
+        author = "Codex",
+        version = "1.0.0",
+        slashCommand = "/minimapsettings",
+        registerForRefresh = true,
+        registerForDefaults = true,
+    }
+
+    local optionsTable = {
+        {
+            type = "dropdown",
+            name = "Position",
+            tooltip = "Coin de l'ecran ou afficher la minimap.",
+            choices = { "Haut gauche", "Haut droite", "Bas gauche", "Bas droite" },
+            choicesValues = { "topleft", "topright", "bottomleft", "bottomright" },
+            getFunc = function()
+                return self.saved.corner
+            end,
+            setFunc = function(value)
+                self.saved.corner = value
+                self:ApplyLayout()
+            end,
+            default = DEFAULTS.corner,
+            width = "full",
+        },
+        {
+            type = "slider",
+            name = "Taille",
+            tooltip = "Pourcentage de la plus petite dimension de l'ecran.",
+            min = 10,
+            max = 40,
+            step = 1,
+            getFunc = function()
+                return self.saved.sizePercent
+            end,
+            setFunc = function(value)
+                self.saved.sizePercent = Clamp(value, 10, 40)
+                self:ApplyLayout()
+            end,
+            default = DEFAULTS.sizePercent,
+            width = "full",
+        },
+        {
+            type = "dropdown",
+            name = "Orientation",
+            tooltip = "Choisit si le nord ou la direction du joueur reste en haut.",
+            choices = { "Nord en haut", "Direction du joueur en haut" },
+            choicesValues = { "north", "player" },
+            getFunc = function()
+                return self.saved.orientation
+            end,
+            setFunc = function(value)
+                self.saved.orientation = value
+                self:UpdatePlayer()
+            end,
+            default = DEFAULTS.orientation,
+            width = "full",
+        },
+    }
+
+    LAM:RegisterAddonPanel("MiniMapSettings", panelData)
+    LAM:RegisterOptionControls("MiniMapSettings", optionsTable)
 end
 
 function MiniMap:HandleSlashCommand(arguments)
@@ -314,6 +389,7 @@ function MiniMap:Initialize()
     self:CreateControls()
     self:ApplyLayout()
     self:RefreshMap(true)
+    self:RegisterSettingsMenu()
 
     SLASH_COMMANDS["/minimap"] = function(arguments)
         self:HandleSlashCommand(arguments)
