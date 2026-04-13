@@ -5,6 +5,7 @@ local DEFAULTS = {
     sizePercent = 22,
     orientation = "north",
     zoom = 6,
+    opacity = 100,
     hidden = false,
 }
 
@@ -121,6 +122,7 @@ function MiniMap:ApplyLayout()
     self.root:SetAnchor(corner.anchor, GuiRoot, corner.relative, corner.x, corner.y)
     self.root:SetDimensions(self.size, self.size)
     self.map:SetDimensions(self.mapSize, self.mapSize)
+    self.root:SetAlpha(Clamp(self.saved.opacity or DEFAULTS.opacity, 20, 100) / 100)
     self:ApplyCircularClip()
 
     local playerSize = Clamp(math.floor(self.size * 0.12), 18, 32)
@@ -259,6 +261,7 @@ function MiniMap:ShowHelp()
     Print("/minimap corner tl|tr|bl|br|left|right|top|bottom")
     Print("/minimap size 10-40")
     Print("/minimap orientation north|player")
+    Print("/minimap opacity 20-100")
     Print("/minimap zoom 2-8")
     Print("/minimap hide | /minimap show")
     Print("/minimapsettings")
@@ -350,6 +353,23 @@ function MiniMap:RegisterSettingsMenu()
             default = DEFAULTS.orientation,
             width = "full",
         },
+        {
+            type = "slider",
+            name = "Transparence",
+            tooltip = "Opacite de la minimap.",
+            min = 20,
+            max = 100,
+            step = 5,
+            getFunc = function()
+                return self.saved.opacity or DEFAULTS.opacity
+            end,
+            setFunc = function(value)
+                self.saved.opacity = Clamp(value, 20, 100)
+                self.root:SetAlpha(self.saved.opacity / 100)
+            end,
+            default = DEFAULTS.opacity,
+            width = "full",
+        },
     }
 
     LAM:RegisterAddonPanel("MiniMapSettings", panelData)
@@ -390,6 +410,16 @@ function MiniMap:HandleSlashCommand(arguments)
         self.saved.orientation = (value == "player" or value == "joueur") and "player" or "north"
         self:UpdatePlayer()
         Print("Orientation: " .. self.saved.orientation)
+    elseif command == "opacity" or command == "opacite" or command == "alpha" then
+        local opacity = tonumber(value)
+        if not opacity then
+            Print("Opacite invalide. Exemple: /minimap opacity 80")
+            return
+        end
+
+        self.saved.opacity = Clamp(opacity, 20, 100)
+        self.root:SetAlpha(self.saved.opacity / 100)
+        Print("Opacite: " .. self.saved.opacity .. "%")
     elseif command == "zoom" then
         local zoom = tonumber(value)
         if not zoom then
