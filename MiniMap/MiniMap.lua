@@ -92,22 +92,13 @@ function MiniMap:CreateControls()
     local player = WINDOW_MANAGER:CreateControl("MiniMapPlayer", root, CT_TEXTURE)
     player:SetAnchor(CENTER, root, CENTER, 0, 0)
     player:SetDimensions(24, 24)
-    player:SetTexture("EsoUI/Art/MapPins/Map_Pin_player.dds")
+    player:SetTexture("EsoUI/Art/Icons/mapKey/mapKey_player.dds")
     player:SetDrawLayer(DL_OVERLAY)
-
-    local centerDot = WINDOW_MANAGER:CreateControl("MiniMapCenterDot", root, CT_BACKDROP)
-    centerDot:SetAnchor(CENTER, root, CENTER, 0, 0)
-    centerDot:SetDimensions(8, 8)
-    centerDot:SetCenterColor(0.1, 0.75, 1, 1)
-    centerDot:SetEdgeColor(0, 0, 0, 1)
-    centerDot:SetEdgeTexture("", 1, 1, 1)
-    centerDot:SetDrawLayer(DL_OVERLAY)
 
     self.root = root
     self.background = background
     self.map = map
     self.player = player
-    self.centerDot = centerDot
 end
 
 function MiniMap:ApplyLayout()
@@ -125,7 +116,7 @@ function MiniMap:ApplyLayout()
     self.root:SetAlpha(Clamp(self.saved.opacity or DEFAULTS.opacity, 20, 100) / 100)
     self:ApplyCircularClip()
 
-    local playerSize = Clamp(math.floor(self.size * 0.12), 18, 32)
+    local playerSize = Clamp(math.floor(self.size * 0.12), 18, 30)
     self.player:SetDimensions(playerSize, playerSize)
 
     self:LayoutTiles()
