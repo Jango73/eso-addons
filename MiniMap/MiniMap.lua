@@ -20,6 +20,87 @@ local CORNERS = {
     bottom = { anchor = BOTTOM, relative = BOTTOM, x = 0, y = -24 },
 }
 
+local STRINGS = {
+    en = {
+        helpCorner = "/minimap corner tl|tr|bl|br|left|right|top|bottom",
+        helpSize = "/minimap size 10-40",
+        helpOrientation = "/minimap orientation north|player",
+        helpOpacity = "/minimap opacity 20-100",
+        helpZoom = "/minimap zoom 2-8",
+        helpVisibility = "/minimap hide | /minimap show",
+        settingsMissing = "LibAddonMenu-2.0 is missing: the settings menu will not be created.",
+        positionName = "Position",
+        positionTooltip = "Minimap position on the screen.",
+        positionTopLeft = "Top left",
+        positionTopRight = "Top right",
+        positionBottomLeft = "Bottom left",
+        positionBottomRight = "Bottom right",
+        positionLeft = "Center left",
+        positionRight = "Center right",
+        positionTop = "Top center",
+        positionBottom = "Bottom center",
+        sizeName = "Size",
+        sizeTooltip = "Percentage of the screen's smallest dimension.",
+        orientationName = "Orientation",
+        orientationTooltip = "Choose whether north or the player direction stays at the top.",
+        orientationNorth = "North up",
+        orientationPlayer = "Player direction up",
+        opacityName = "Opacity",
+        opacityTooltip = "Minimap opacity.",
+        invalidPosition = "Invalid position. Use tl, tr, bl, br, left, right, top or bottom.",
+        positionChanged = "Position: %s",
+        invalidSize = "Invalid size. Example: /minimap size 22",
+        sizeChanged = "Size: %s%%",
+        invalidOrientation = "Invalid orientation. Use north or player.",
+        orientationChanged = "Orientation: %s",
+        invalidOpacity = "Invalid opacity. Example: /minimap opacity 80",
+        opacityChanged = "Opacity: %s%%",
+        invalidZoom = "Invalid zoom. Example: /minimap zoom 6",
+        zoomChanged = "Zoom: %s",
+        hidden = "Hidden.",
+        shown = "Shown.",
+    },
+    fr = {
+        helpCorner = "/minimap corner tl|tr|bl|br|left|right|top|bottom",
+        helpSize = "/minimap size 10-40",
+        helpOrientation = "/minimap orientation north|player",
+        helpOpacity = "/minimap opacity 20-100",
+        helpZoom = "/minimap zoom 2-8",
+        helpVisibility = "/minimap hide | /minimap show",
+        settingsMissing = "LibAddonMenu-2.0 est introuvable: le menu de settings ne sera pas cree.",
+        positionName = "Position",
+        positionTooltip = "Position de la minimap sur l'ecran.",
+        positionTopLeft = "Haut gauche",
+        positionTopRight = "Haut droite",
+        positionBottomLeft = "Bas gauche",
+        positionBottomRight = "Bas droite",
+        positionLeft = "Centre gauche",
+        positionRight = "Centre droite",
+        positionTop = "Centre haut",
+        positionBottom = "Centre bas",
+        sizeName = "Taille",
+        sizeTooltip = "Pourcentage de la plus petite dimension de l'ecran.",
+        orientationName = "Orientation",
+        orientationTooltip = "Choisit si le nord ou la direction du joueur reste en haut.",
+        orientationNorth = "Nord en haut",
+        orientationPlayer = "Direction du joueur en haut",
+        opacityName = "Transparence",
+        opacityTooltip = "Opacite de la minimap.",
+        invalidPosition = "Position invalide. Utilise tl, tr, bl, br, left, right, top ou bottom.",
+        positionChanged = "Position: %s",
+        invalidSize = "Taille invalide. Exemple: /minimap size 22",
+        sizeChanged = "Taille: %s%%",
+        invalidOrientation = "Orientation invalide. Utilise north ou player.",
+        orientationChanged = "Orientation: %s",
+        invalidOpacity = "Opacite invalide. Exemple: /minimap opacity 80",
+        opacityChanged = "Opacite: %s%%",
+        invalidZoom = "Zoom invalide. Exemple: /minimap zoom 6",
+        zoomChanged = "Zoom: %s",
+        hidden = "Masquee.",
+        shown = "Affichee.",
+    },
+}
+
 local MiniMap = {
     tiles = {},
     tileCount = 0,
@@ -41,6 +122,17 @@ local function Print(message)
     if d then
         d("|c80d0ffMiniMap|r " .. message)
     end
+end
+
+local function GetLanguage()
+    local language = GetCVar and GetCVar("Language.2") or nil
+    language = zo_strlower(language or "")
+
+    if string.sub(language, 1, 2) == "fr" then
+        return "fr"
+    end
+
+    return "en"
 end
 
 local function NormalizeCorner(value)
@@ -132,6 +224,11 @@ function MiniMap:ApplyCircularClip()
     if centerX and centerY then
         self.root:SetCircularClip(centerX, centerY, self.size / 2)
     end
+end
+
+function MiniMap:Text(key)
+    local strings = STRINGS[self.language] or STRINGS.en
+    return strings[key] or STRINGS.en[key] or key
 end
 
 function MiniMap:LayoutTiles()
@@ -249,19 +346,19 @@ function MiniMap:UpdatePlayer()
 end
 
 function MiniMap:ShowHelp()
-    Print("/minimap corner tl|tr|bl|br|left|right|top|bottom")
-    Print("/minimap size 10-40")
-    Print("/minimap orientation north|player")
-    Print("/minimap opacity 20-100")
-    Print("/minimap zoom 2-8")
-    Print("/minimap hide | /minimap show")
+    Print(self:Text("helpCorner"))
+    Print(self:Text("helpSize"))
+    Print(self:Text("helpOrientation"))
+    Print(self:Text("helpOpacity"))
+    Print(self:Text("helpZoom"))
+    Print(self:Text("helpVisibility"))
     Print("/minimapsettings")
 end
 
 function MiniMap:RegisterSettingsMenu()
     local LAM = LibAddonMenu2
     if not LAM then
-        Print("LibAddonMenu-2.0 est introuvable: le menu de settings ne sera pas cree.")
+        Print(self:Text("settingsMissing"))
         return
     end
 
@@ -279,17 +376,17 @@ function MiniMap:RegisterSettingsMenu()
     local optionsTable = {
         {
             type = "dropdown",
-            name = "Position",
-            tooltip = "Position de la minimap sur l'ecran.",
+            name = self:Text("positionName"),
+            tooltip = self:Text("positionTooltip"),
             choices = {
-                "Haut gauche",
-                "Haut droite",
-                "Bas gauche",
-                "Bas droite",
-                "Centre gauche",
-                "Centre droite",
-                "Centre haut",
-                "Centre bas",
+                self:Text("positionTopLeft"),
+                self:Text("positionTopRight"),
+                self:Text("positionBottomLeft"),
+                self:Text("positionBottomRight"),
+                self:Text("positionLeft"),
+                self:Text("positionRight"),
+                self:Text("positionTop"),
+                self:Text("positionBottom"),
             },
             choicesValues = {
                 "topleft",
@@ -313,8 +410,8 @@ function MiniMap:RegisterSettingsMenu()
         },
         {
             type = "slider",
-            name = "Taille",
-            tooltip = "Pourcentage de la plus petite dimension de l'ecran.",
+            name = self:Text("sizeName"),
+            tooltip = self:Text("sizeTooltip"),
             min = 10,
             max = 40,
             step = 1,
@@ -330,9 +427,9 @@ function MiniMap:RegisterSettingsMenu()
         },
         {
             type = "dropdown",
-            name = "Orientation",
-            tooltip = "Choisit si le nord ou la direction du joueur reste en haut.",
-            choices = { "Nord en haut", "Direction du joueur en haut" },
+            name = self:Text("orientationName"),
+            tooltip = self:Text("orientationTooltip"),
+            choices = { self:Text("orientationNorth"), self:Text("orientationPlayer") },
             choicesValues = { "north", "player" },
             getFunc = function()
                 return self.saved.orientation
@@ -346,8 +443,8 @@ function MiniMap:RegisterSettingsMenu()
         },
         {
             type = "slider",
-            name = "Transparence",
-            tooltip = "Opacite de la minimap.",
+            name = self:Text("opacityName"),
+            tooltip = self:Text("opacityTooltip"),
             min = 20,
             max = 100,
             step = 5,
@@ -375,60 +472,60 @@ function MiniMap:HandleSlashCommand(arguments)
     if command == "corner" or command == "position" then
         local corner = NormalizeCorner(value)
         if not corner then
-            Print("Position invalide. Utilise tl, tr, bl, br, left, right, top ou bottom.")
+            Print(self:Text("invalidPosition"))
             return
         end
 
         self.saved.corner = corner
         self:ApplyLayout()
-        Print("Position: " .. corner)
+        Print(string.format(self:Text("positionChanged"), corner))
     elseif command == "size" or command == "taille" then
         local sizePercent = tonumber(value)
         if not sizePercent then
-            Print("Taille invalide. Exemple: /minimap size 22")
+            Print(self:Text("invalidSize"))
             return
         end
 
         self.saved.sizePercent = Clamp(sizePercent, 10, 40)
         self:ApplyLayout()
-        Print("Taille: " .. self.saved.sizePercent .. "%")
+        Print(string.format(self:Text("sizeChanged"), self.saved.sizePercent))
     elseif command == "orientation" or command == "orient" then
         if value ~= "north" and value ~= "player" and value ~= "nord" and value ~= "joueur" then
-            Print("Orientation invalide. Utilise north ou player.")
+            Print(self:Text("invalidOrientation"))
             return
         end
 
         self.saved.orientation = (value == "player" or value == "joueur") and "player" or "north"
         self:UpdatePlayer()
-        Print("Orientation: " .. self.saved.orientation)
+        Print(string.format(self:Text("orientationChanged"), self.saved.orientation))
     elseif command == "opacity" or command == "opacite" or command == "alpha" then
         local opacity = tonumber(value)
         if not opacity then
-            Print("Opacite invalide. Exemple: /minimap opacity 80")
+            Print(self:Text("invalidOpacity"))
             return
         end
 
         self.saved.opacity = Clamp(opacity, 20, 100)
         self.root:SetAlpha(self.saved.opacity / 100)
-        Print("Opacite: " .. self.saved.opacity .. "%")
+        Print(string.format(self:Text("opacityChanged"), self.saved.opacity))
     elseif command == "zoom" then
         local zoom = tonumber(value)
         if not zoom then
-            Print("Zoom invalide. Exemple: /minimap zoom 6")
+            Print(self:Text("invalidZoom"))
             return
         end
 
         self.saved.zoom = Clamp(zoom, 2, 8)
         self:ApplyLayout()
-        Print("Zoom: " .. self.saved.zoom)
+        Print(string.format(self:Text("zoomChanged"), self.saved.zoom))
     elseif command == "hide" or command == "masquer" then
         self.saved.hidden = true
         self.root:SetHidden(true)
-        Print("Masquee.")
+        Print(self:Text("hidden"))
     elseif command == "show" or command == "afficher" then
         self.saved.hidden = false
         self:UpdatePlayer()
-        Print("Affichee.")
+        Print(self:Text("shown"))
     else
         self:ShowHelp()
     end
@@ -436,6 +533,7 @@ end
 
 function MiniMap:Initialize()
     self.saved = ZO_SavedVars:NewAccountWide("MiniMapSavedVariables", 1, nil, DEFAULTS)
+    self.language = GetLanguage()
 
     self:CreateControls()
     self:ApplyLayout()
