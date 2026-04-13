@@ -316,7 +316,9 @@ function MiniMap:UpdateDebugLabel()
 
     local debug = self.questDebug or {}
     local text = string.format(
-        "MiniMap debug\nmap=%s\nquest=%s source=%s refreshed=%s\nsteps=%s positions=%s inside=%s\nplayer=%.4f,%.4f target=%s",
+        "MiniMap debug\ncounter=%d\nworldMapState=%s\nmap=%s\nquest=%s source=%s refreshed=%s\nsteps=%s positions=%s inside=%s\nplayer=%.4f,%.4f target=%s",
+        self.debugCounter or 0,
+        tostring(self.worldMapState or "nil"),
         tostring(self.currentMapName or ""),
         tostring(debug.questIndex or "nil"),
         tostring(debug.hasBreadcrumbs or false),
@@ -517,10 +519,6 @@ function MiniMap:RefreshMap(force)
     end
 
     self.nextMapRefreshMs = now + 1000
-
-    if SetMapToPlayerLocation then
-        SetMapToPlayerLocation()
-    end
 
     local mapName = GetMapName and GetMapName() or ""
     local numHorizontalTiles, numVerticalTiles = 0, 0
@@ -800,8 +798,34 @@ function MiniMap:Initialize()
         self:HandleSlashCommand(arguments)
     end
 
-    EVENT_MANAGER:RegisterForUpdate(ADDON_NAME .. "Update", 150, function()
-        self:UpdatePlayer()
+    local updateCounter = 0
+    local lastMapOpen = false
+    local function OnMinimapUpdate()
+        MiniMap:UpdatePlayer()
+        
+        local sceneShown = false
+        local scene = SCENE_MANAGER and SCENE_MANAGER.GetScene and SCENE_MANAGER:GetScene("worldMap")
+        if scene then
+            sceneShown = scene:IsShowing()
+        end
+        
+        if sceneShown then
+            MiniMap.root:SetHidden(true)
+            lastMapOpen = true
+        elseif not MiniMap.saved.hidden then
+            MiniMap.root:SetHidden(false)
+            if lastMapOpen then
+                lastMapOpen = false
+                SetMapToPlayerLocation()
+                MiniMap:RefreshMap(true)
+            end
+        end
+    end
+
+    EVENT_MANAGER:RegisterForUpdate(ADDON_NAME .. "Update", 150, OnMinimapUpdate)
+
+    EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_ZONE_CHANGED", EVENT_ZONE_CHANGED, function()
+        MiniMap:RefreshMap(true)
     end)
 end
 
