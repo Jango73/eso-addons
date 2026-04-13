@@ -8,9 +8,113 @@ local DEFAULTS = {
     opacity = 100,
     debug = false,
     hidden = false,
+    showResourceIndicators = true,
 }
 
 local EDGE_INDICATOR_TEXTURE = "MiniMap\\media\\edge_indicator_triangle.dds"
+
+local SpotDatabase = {
+    _data = nil,
+}
+SpotDatabase.__index = SpotDatabase
+
+local RESOURCE_CATEGORIES = {
+    { key = "blacksmithing", color = { 1, 0.5, 0, 1 } },
+    { key = "clothier", color = { 0.8, 0.6, 0.4, 1 } },
+    { key = "woodworking", color = { 0.6, 0.4, 0.2, 1 } },
+    { key = "jewelrycrafter", color = { 0.9, 0.7, 0.2, 1 } },
+    { key = "wood", color = { 0.5, 0.35, 0.15, 1 } },
+    { key = "rune_refreme", color = { 0.5, 0.2, 1, 1 } },
+    { key = "alchemy", color = { 0.2, 0.8, 0.2, 1 } },
+    { key = "poison", color = { 0.4, 0.8, 0.4, 1 } },
+    { key = "treasure", color = { 1, 0.84, 0, 1 } },
+}
+
+function SpotDatabase:Init(savedVars)
+    self._data = savedVars
+end
+
+function SpotDatabase:AddSpot(x, y, category, mapName)
+    if not self._data then
+        Print("ERROR: SpotDatabase not initialized!")
+        return false
+    end
+    if not x or not y or not category then return false end
+    if not self._data[category] then self._data[category] = {} end
+
+    local threshold = 0.0001
+    local thresholdSq = threshold * threshold
+    local currentMap = mapName or GetMapName()
+
+    for i, s in ipairs(self._data[category]) do
+        if s.map == currentMap then
+            local dx = s.x - x
+            local dy = s.y - y
+            if (dx * dx + dy * dy) <= thresholdSq then
+                self._data[category][i] = { x = x, y = y, map = currentMap, ts = GetTimeStamp() }
+                return true
+            end
+        end
+    end
+
+    table.insert(self._data[category], { x = x, y = y, map = currentMap, ts = GetTimeStamp() })
+    return true
+end
+
+function SpotDatabase:GetNearestSpot(px, py, category, maxCount, mapName)
+    if not px or not py then return nil end
+    maxCount = maxCount or 1
+    local spots = self._data[category] or {}
+    local currentMap = mapName or GetMapName()
+
+    local best = nil
+    local bestDistSq = nil
+
+    for _, s in ipairs(spots) do
+        if s.map == currentMap then
+            local dx, dy = s.x - px, s.y - py
+            local distSq = (dx * dx) + (dy * dy)
+            if not bestDistSq or distSq < bestDistSq then
+                best = s
+                bestDistSq = distSq
+            end
+        end
+    end
+
+    if best then
+        return { x = best.x, y = best.y, category = category, distance = math.sqrt(bestDistSq) }
+    end
+    return nil
+end
+
+function SpotDatabase:GetNearestSpotByCategory(px, py, maxCount, mapName)
+    if not px or not py then return {} end
+    maxCount = maxCount or 1
+    local currentMap = mapName or GetMapName()
+    local results = {}
+    for cat, _ in pairs(self._data) do
+        if type(cat) == "string" then
+            local nearest = self:GetNearestSpot(px, py, cat, 1, currentMap)
+            if nearest then table.insert(results, nearest) end
+        end
+    end
+    table.sort(results, function(a, b) return (a.distance or 0) < (b.distance or 0) end)
+    return results
+end
+
+function SpotDatabase:Clear(category)
+    if category then self._data[category] = {}
+    else for k in pairs(self._data) do if type(k) == "string" then self._data[k] = {} end end end
+end
+
+function SpotDatabase:GetSpotCount(category)
+    if category then return #(self._data[category] or {}) end
+    local t = 0
+    for k, v in pairs(self._data) do
+        if type(k) == "string" and type(v) == "table" then t = t + #v end
+    end
+    return t
+end
 
 local CORNERS = {
     topleft = { anchor = TOPLEFT, relative = TOPLEFT, x = 24, y = 24 },
@@ -243,6 +347,17 @@ function MiniMap:CreateControls()
             return self:GetActiveQuestTargetPosition()
         end,
     })
+
+    for _, cat in ipairs(RESOURCE_CATEGORIES) do
+        self:RegisterEdgeIndicator(cat.key, {
+            color = cat.color,
+            provider = (function(category)
+                return function()
+                    return self:GetNearestResourceSpot(category)
+                end
+            end)(cat.key),
+        })
+    end
 end
 
 function MiniMap:ApplyLayout()
@@ -315,17 +430,15 @@ function MiniMap:UpdateDebugLabel()
     end
 
     local debug = self.questDebug or {}
+    local spotInfo = ""
+    for _, cat in ipairs(RESOURCE_CATEGORIES) do
+        spotInfo = spotInfo .. string.format("%s=%d ", cat.key, SpotDatabase:GetSpotCount(cat.key))
+    end
     local text = string.format(
-        "MiniMap debug\ncounter=%d\nworldMapState=%s\nmap=%s\nquest=%s source=%s refreshed=%s\nsteps=%s positions=%s inside=%s\nplayer=%.4f,%.4f target=%s",
-        self.debugCounter or 0,
-        tostring(self.worldMapState or "nil"),
+        "MiniMap debug\nSpots: %s\nmap=%s\nquest=%s\nplayer=%.4f,%.4f target=%s",
+        spotInfo,
         tostring(self.currentMapName or ""),
         tostring(debug.questIndex or "nil"),
-        tostring(debug.hasBreadcrumbs or false),
-        tostring(debug.refreshed or false),
-        tostring(debug.steps or 0),
-        tostring(debug.positions or 0),
-        tostring(debug.inside or 0),
         debug.playerX or 0,
         debug.playerY or 0,
         debug.target and string.format("%.4f,%.4f", debug.targetX, debug.targetY) or "nil"
@@ -439,6 +552,24 @@ function MiniMap:GetActiveQuestTargetPosition()
     end
 
     self:SetQuestDebug(debug)
+    return nil
+end
+
+function MiniMap:GetNearestResourceSpot(category)
+    if not self.saved.showResourceIndicators then
+        return nil
+    end
+
+    local px, py = self.playerMapX, self.playerMapY
+    if not px or not py then
+        return nil
+    end
+
+    local spot = SpotDatabase:GetNearestSpot(px, py, category, 1, self.currentMapName)
+    if spot then
+        return spot.x, spot.y
+    end
+
     return nil
 end
 
@@ -787,6 +918,15 @@ end
 
 function MiniMap:Initialize()
     self.saved = ZO_SavedVars:NewAccountWide("MiniMapSavedVariables", 1, nil, DEFAULTS)
+
+    local SPOT_DEFAULTS = {}
+    for _, cat in ipairs(RESOURCE_CATEGORIES) do
+        SPOT_DEFAULTS[cat.key] = {}
+    end
+    self.spots = ZO_SavedVars:NewAccountWide("MiniMapSpots", 1, nil, SPOT_DEFAULTS)
+    SpotDatabase:Init(self.spots)
+    local count = SpotDatabase:GetSpotCount()
+
     self.language = GetLanguage()
 
     self:CreateControls()
@@ -827,6 +967,84 @@ function MiniMap:Initialize()
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_ZONE_CHANGED", EVENT_ZONE_CHANGED, function()
         MiniMap:RefreshMap(true)
     end)
+
+    local function GetResourceCategory(lootType)
+        if lootType == 26 then return "blacksmithing"
+        elseif lootType == 40 then return "clothier"
+        elseif lootType == 37 then return "woodworking"
+        elseif lootType == 0 then return "jewelrycrafter"
+        elseif lootType == 15 then return "rune_refreme"
+        elseif lootType == 23 then return "alchemy"
+        elseif lootType == 0 then return "poison"
+        elseif lootType == 0 then return "treasure"
+        end
+        return nil
+    end
+
+    EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_LOOT", EVENT_LOOT_RECEIVED, function(eventCode, itemName, quantity, itemSound, lootType, lootedBySelf)
+        Print("LOOT type=" .. lootType)
+        local category = GetResourceCategory(lootType)
+        Print("category=" .. tostring(category))
+        if category then
+            local x, y, _ = GetMapPlayerPosition("player")
+            if x and y then
+                SpotDatabase:AddSpot(x, y, category, self.currentMapName)
+                Print("Saved " .. category .. " spot")
+            end
+        end
+    end)
+
+    local function AddCurrentSpot(category)
+        local x, y, _ = GetMapPlayerPosition("player")
+        if x and y then
+            SpotDatabase:AddSpot(x, y, category, self.currentMapName)
+            Print("Added " .. category .. " spot at " .. string.format("%.4f, %.4f", x, y))
+        else
+            Print("Cannot add spot: position unknown")
+        end
+    end
+
+    local function IsValidCategory(cat)
+        for _, c in ipairs(RESOURCE_CATEGORIES) do
+            if c.key == cat then return true end
+        end
+        return false
+    end
+
+    SLASH_COMMANDS["/minimap_add"] = function(arguments)
+        local category = zo_strlower(arguments or "")
+        if IsValidCategory(category) then
+            AddCurrentSpot(category)
+        else
+            local valid = ""
+            for _, c in ipairs(RESOURCE_CATEGORIES) do
+                valid = valid .. c.key .. "|"
+            end
+            Print("Usage: /minimap_add " .. valid:sub(1, -2))
+        end
+    end
+
+    SLASH_COMMANDS["/minimap_spots"] = function(arguments)
+        local total = SpotDatabase:GetSpotCount()
+        Print("Total spots: " .. total)
+        for _, cat in ipairs(RESOURCE_CATEGORIES) do
+            local count = SpotDatabase:GetSpotCount(cat.key)
+            Print("  " .. cat.key .. ": " .. count)
+        end
+    end
+
+    SLASH_COMMANDS["/minimap_clear"] = function(arguments)
+        local category = zo_strlower(arguments or "")
+        if category == "all" then
+            SpotDatabase:Clear()
+            Print("All spots cleared")
+        elseif IsValidCategory(category) then
+            SpotDatabase:Clear(category)
+            Print(category .. " spots cleared")
+        else
+            Print("Usage: /minimap_clear <category>|all")
+        end
+    end
 end
 
 local function OnAddOnLoaded(_, addonName)
