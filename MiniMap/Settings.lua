@@ -9,6 +9,7 @@ DEFAULTS = {
     hidden = false,
     showResourceIndicators = true,
     autoSaveSpots = true,
+    showToolbar = false,
 }
 
 CORNERS = {
@@ -63,6 +64,8 @@ STRINGS = {
         shown = 'Shown.',
         autoSaveSpotsName = 'Auto save spots',
         autoSaveSpotsTooltip = 'Automatically save resource spots when loot is collected.',
+        showToolbarName = 'Show toolbar',
+        showToolbarTooltip = 'Show toolbar with buttons to manually add resource spots and delete spots.',
     },
     fr = {
         helpCorner = '/minimap corner tl|tr|bl|br|left|right|top|bottom',
@@ -104,6 +107,8 @@ STRINGS = {
         shown = 'Affichee.',
         autoSaveSpotsName = 'Sauvegarde auto des spots',
         autoSaveSpotsTooltip = 'Sauvegarder automatiquement les spots de ressources quand le butin est ramasse.',
+        showToolbarName = 'Afficher la barre d\'outils',
+        showToolbarTooltip = 'Afficher la barre d\'outils avec des boutons pour ajouter des spots de ressources manuellement et supprimer des spots.',
     },
 }
 

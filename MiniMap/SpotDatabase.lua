@@ -6,15 +6,15 @@ SpotDatabase.__index = SpotDatabase
 
 RESOURCE_CATEGORIES = {
     { key = 'chest', color = { 1, 0.84, 0, 1 } },
-    { key = 'thief_chest', color = { 1, 0.84, 0, 1 } },
-    { key = 'ore', color = { 1, 0.5, 0, 1 } },
-    { key = 'silk', color = { 0.8, 0.6, 0.4, 1 } },
-    { key = 'wood', color = { 0.6, 0.4, 0.2, 1 } },
     { key = 'jewelrycrafter', color = { 0.9, 0.7, 0.2, 1 } },
-    { key = 'rune', color = { 0.5, 0.2, 1, 1 } },
+    { key = 'ore', color = { 1, 0.5, 0, 1 } },
     { key = 'plant', color = { 0.2, 0.8, 0.2, 1 } },
-    { key = 'poison', color = { 0.4, 0.8, 0.4, 1 } },
+    { key = 'poison', color = { 0.5, 0.5, 0.5, 1 } },
+    { key = 'rune', color = { 0.5, 0.2, 1, 1 } },
+    { key = 'silk', color = { 0.7, 0.3, 0.3, 1 } },
+    { key = 'thief_chest', color = { 0.3, 0.5, 0.8, 1 } },
     { key = 'water', color = { 0.25, 0.5, 1, 1 } },
+    { key = 'wood', color = { 0.6, 0.4, 0.2, 1 } },
 }
 
 function SpotDatabase:Init(savedVars)
@@ -131,6 +131,41 @@ end
 function SpotDatabase:Clear(category)
     if category then self._data[category] = {}
     else for k in pairs(self._data) do if type(k) == 'string' then self._data[k] = {} end end end
+end
+
+function SpotDatabase:RemoveSpotsInRadius(x, y, radius, category, mapName)
+    if not self._data or not x or not y then return 0, 0 end
+    category = category or nil
+    mapName = mapName or GetMapName()
+    local threshold = radius or MINIMAP_SPOT_DUPLICATE_THRESHOLD
+    local thresholdSq = threshold * threshold
+    local removed = 0
+    local total = 0
+
+    local categories = category and {category} or RESOURCE_CATEGORIES
+
+    for _, cat in ipairs(categories) do
+        local catKey = type(cat) == "table" and cat.key or cat
+        local spots = self._data[catKey] or {}
+        local newSpots = {}
+        for _, s in ipairs(spots) do
+            total = total + 1
+            if s.map ~= mapName then
+                table.insert(newSpots, s)
+            else
+                local dx = s.x - x
+                local dy = s.y - y
+                if (dx * dx + dy * dy) > thresholdSq then
+                    table.insert(newSpots, s)
+                else
+                    removed = removed + 1
+                end
+            end
+        end
+        self._data[catKey] = newSpots
+    end
+
+    return removed, total
 end
 
 function SpotDatabase:GetSpots(category)

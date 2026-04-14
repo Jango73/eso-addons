@@ -142,6 +142,125 @@ function MiniMap:CreateControls()
     self.debugBackground = debugBackground
     self.debugLabel = debugLabel
 
+    local toolbar = WINDOW_MANAGER:CreateTopLevelWindow("MiniMapToolbar")
+    toolbar:SetDrawTier(DT_HIGH)
+    toolbar:SetClampedToScreen(true)
+    toolbar:SetMouseEnabled(true)
+    toolbar:SetHidden(true)
+
+    local toolbarBg = WINDOW_MANAGER:CreateControl("MiniMapToolbarBg", toolbar, CT_BACKDROP)
+    toolbarBg:SetAnchorFill(toolbar)
+    toolbarBg:SetCenterColor(0, 0, 0, 0.7)
+    toolbarBg:SetEdgeColor(0.5, 0.5, 0.5, 0.8)
+    toolbarBg:SetEdgeTexture("", 1, 1, 2)
+
+    local buttonSize = 32
+    local buttonSpacing = 6
+    local totalWidth = (#RESOURCE_CATEGORIES + 1) * (buttonSize + buttonSpacing) - buttonSpacing
+    toolbar:SetDimensions(totalWidth, buttonSize + 12)
+
+    local function CreateToolButton(index, cat)
+        local btn = WINDOW_MANAGER:CreateControl("MiniMapToolbarBtn" .. cat.key, toolbar, CT_BUTTON)
+        btn:SetDimensions(buttonSize, buttonSize)
+
+        local btnBg = WINDOW_MANAGER:CreateControl("MiniMapToolbarBtn" .. cat.key .. "Bg", btn, CT_BACKDROP)
+        btnBg:SetAnchorFill(btn)
+        btnBg:SetCenterColor(cat.color[1], cat.color[2], cat.color[3], 0.7)
+        btnBg:SetEdgeColor(cat.color[1], cat.color[2], cat.color[3], 1)
+        btnBg:SetEdgeTexture("", 1, 1, 2)
+
+        local btnLabel = WINDOW_MANAGER:CreateControl("MiniMapToolbarBtn" .. cat.key .. "Label", btn, CT_LABEL)
+        btnLabel:SetAnchor(CENTER, btn, CENTER, 0, 0)
+        btnLabel:SetFont("ZoFontGameBold")
+        btnLabel:SetColor(0, 0, 0, 1)
+        btnLabel:SetText(string.upper(string.sub(cat.key, 1, 1)))
+
+        btn:SetMouseOverTexture("EsoUI/Art/Buttons/left_up.dds")
+
+        local function AddSpotHandler()
+            local x, y = GetMapPlayerPosition("player")
+            if x and y then
+                if SpotDatabase:AddSpot(x, y, cat.key, MiniMap.currentMapName) then
+                    ZO_AlertNoSuppression(UI_ALERT_CATEGORY_ALERT, nil, "Added a " .. cat.key .. " spot")
+                end
+            end
+        end
+        btn:SetHandler("OnClicked", AddSpotHandler)
+        btn:SetHandler("OnMouseEnter", function()
+            btnBg:SetCenterColor(cat.color[1] * 0.7, cat.color[2] * 0.7, cat.color[3] * 0.7, 0.9)
+            InitializeTooltip(InformationTooltip, btn, TOPLEFT, TOPLEFT, 0, 0)
+            SetTooltipText(InformationTooltip, "Add " .. cat.key .. " spot")
+        end)
+        btn:SetHandler("OnMouseExit", function()
+            btnBg:SetCenterColor(cat.color[1], cat.color[2], cat.color[3], 0.7)
+            ClearTooltip(InformationTooltip)
+        end)
+        return btn
+    end
+
+    local function CreateDeleteButton()
+        local btn = WINDOW_MANAGER:CreateControl("MiniMapToolbarBtnDelete", toolbar, CT_BUTTON)
+        btn:SetDimensions(buttonSize, buttonSize)
+        btn:SetAnchor(LEFT, toolbar, LEFT, buttonSpacing, 0)
+
+        local btnBg = WINDOW_MANAGER:CreateControl("MiniMapToolbarBtnDeleteBg", btn, CT_BACKDROP)
+        btnBg:SetAnchorFill(btn)
+        btnBg:SetCenterColor(0.8, 0.2, 0.2, 0.8)
+        btnBg:SetEdgeColor(1, 0.3, 0.3, 1)
+        btnBg:SetEdgeTexture("", 1, 1, 2)
+
+        local btnLabel = WINDOW_MANAGER:CreateControl("MiniMapToolbarBtnDeleteLabel", btn, CT_LABEL)
+        btnLabel:SetAnchor(CENTER, btn, CENTER, 0, 0)
+        btnLabel:SetFont("ZoFontGameBold")
+        btnLabel:SetColor(1, 1, 1, 1)
+        btnLabel:SetText("X")
+
+        local function DeleteSpotsHandler()
+            local x, y = GetMapPlayerPosition("player")
+            if x and y then
+                local deleted, total = 0, 0
+                for _, cat in ipairs(RESOURCE_CATEGORIES) do
+                    local d, t = SpotDatabase:RemoveSpotsInRadius(x, y, MINIMAP_SPOT_DUPLICATE_THRESHOLD, cat.key, MiniMap.currentMapName)
+                    deleted = deleted + d
+                    total = total + t
+                end
+                ZO_AlertNoSuppression(UI_ALERT_CATEGORY_ALERT, nil, string.format("%d spot(s) deleted", deleted))
+            end
+        end
+        btn:SetHandler("OnClicked", DeleteSpotsHandler)
+        btn:SetHandler("OnMouseEnter", function()
+            btnBg:SetCenterColor(1, 0.3, 0.3, 0.9)
+            InitializeTooltip(InformationTooltip, btn, TOPLEFT, TOPLEFT, 0, 0)
+            SetTooltipText(InformationTooltip, "Delete spots")
+        end)
+        btn:SetHandler("OnMouseExit", function()
+            btnBg:SetCenterColor(0.8, 0.2, 0.2, 0.8)
+            ClearTooltip(InformationTooltip)
+        end)
+        return btn
+    end
+
+    self.toolbarButtons = {}
+    local prevBtn = nil
+    for i, cat in ipairs(RESOURCE_CATEGORIES) do
+        local btn = CreateToolButton(i, cat)
+        self.toolbarButtons[cat.key] = btn
+        if i == 1 then
+            btn:ClearAnchors()
+            btn:SetAnchor(LEFT, toolbar, LEFT, 4, 0)
+        else
+            btn:ClearAnchors()
+            btn:SetAnchor(LEFT, prevBtn, RIGHT, 2, 0)
+        end
+        prevBtn = btn
+    end
+    self.toolbarDeleteButton = CreateDeleteButton()
+    self.toolbarDeleteButton:ClearAnchors()
+    self.toolbarDeleteButton:SetAnchor(LEFT, prevBtn, RIGHT, 8, 0)
+
+    self.toolbar = toolbar
+    self.toolbarBg = toolbarBg
+
     self.spotMarkers = {}
     self.spotMarkersInitialized = false
 
@@ -189,8 +308,14 @@ function MiniMap:ApplyLayout()
         indicator.control:SetDimensions(playerSize, playerSize)
     end
 
+    self:ApplyToolbarLayout()
+
     self:LayoutTiles()
     self:UpdatePlayer()
+
+    if self.toolbar then
+        self.toolbar:SetHidden(not self.saved.showToolbar)
+    end
 end
 
 function MiniMap:ApplyDebugLayout()
@@ -213,6 +338,15 @@ function MiniMap:ApplyCircularClip()
     if centerX and centerY then
         self.root:SetCircularClip(centerX, centerY, self.size / 2)
     end
+end
+
+function MiniMap:ApplyToolbarLayout()
+    if not self.toolbar then
+        return
+    end
+
+    self.toolbar:ClearAnchors()
+    self.toolbar:SetAnchor(BOTTOM, GuiRoot, BOTTOM, 0, -84)
 end
 
 function MiniMap:Text(key)
@@ -334,6 +468,20 @@ function MiniMap:RegisterSettingsMenu()
                 self.saved.autoSaveSpots = value
             end,
             default = DEFAULTS.autoSaveSpots,
+            width = 'full',
+        },
+        {
+            type = 'checkbox',
+            name = self:Text('showToolbarName'),
+            tooltip = self:Text('showToolbarTooltip'),
+            getFunc = function()
+                return self.saved.showToolbar
+            end,
+            setFunc = function(value)
+                self.saved.showToolbar = value
+                self:ApplyToolbarLayout()
+            end,
+            default = DEFAULTS.showToolbar,
             width = 'full',
         },
     }
@@ -838,11 +986,16 @@ function MiniMap:Initialize()
             sceneShown = scene:IsShowing()
         end
         
+        local isPointerMode = IsGameCameraUIModeActive and IsGameCameraUIModeActive()
+        
         if sceneShown then
             MiniMap.root:SetHidden(true)
+            if MiniMap.toolbar then MiniMap.toolbar:SetHidden(true) end
             lastMapOpen = true
         elseif not MiniMap.saved.hidden then
-            MiniMap.root:SetHidden(false)
+            local toolbarVisible = MiniMap.saved.showToolbar and isPointerMode
+            if MiniMap.toolbar then MiniMap.toolbar:SetHidden(not toolbarVisible) end
+            MiniMap.root:SetHidden(toolbarVisible)
             if lastMapOpen then
                 lastMapOpen = false
                 SetMapToPlayerLocation()
