@@ -7,5 +7,7 @@
 ## SavedVariables: MiniMapSavedVariables
 ## SavedVariables: MiniMapSpots
 
+MiniMapConstants.lua
 SpotDatabase.lua
+Settings.lua
 MiniMap.lua

@@ -1,116 +1,6 @@
 
 local ADDON_NAME = "MiniMap"
-
-local DEFAULTS = {
-    corner = "bottomright",
-    sizePercent = 22,
-    orientation = "north",
-    zoom = 6,
-    opacity = 100,
-    debug = false,
-    hidden = false,
-    showResourceIndicators = true,
-}
-
 local SpotMarker_ = "SpotMarker"
-
-local SIZE_FACTOR_PLAYER = 0.1
-local SIZE_FACTOR_SPOT_MARKER = 0.045
-local SIZE_FACTOR_EDGE_INDICATOR = 0.08
-
-local EDGE_INDICATOR_TEXTURE = "MiniMap\\media\\edge_indicator_triangle.dds"
-
-local CORNERS = {
-    topleft = { anchor = TOPLEFT, relative = TOPLEFT, x = 24, y = 24 },
-    topright = { anchor = TOPRIGHT, relative = TOPRIGHT, x = -24, y = 24 },
-    bottomleft = { anchor = BOTTOMLEFT, relative = BOTTOMLEFT, x = 24, y = -24 },
-    bottomright = { anchor = BOTTOMRIGHT, relative = BOTTOMRIGHT, x = -24, y = -24 },
-    left = { anchor = LEFT, relative = LEFT, x = 24, y = 0 },
-    right = { anchor = RIGHT, relative = RIGHT, x = -24, y = 0 },
-    top = { anchor = TOP, relative = TOP, x = 0, y = 24 },
-    bottom = { anchor = BOTTOM, relative = BOTTOM, x = 0, y = -24 },
-}
-
-local STRINGS = {
-    en = {
-        helpCorner = "/minimap corner tl|tr|bl|br|left|right|top|bottom",
-        helpSize = "/minimap size 10-40",
-        helpOrientation = "/minimap orientation north|player",
-        helpOpacity = "/minimap opacity 20-100",
-        helpZoom = "/minimap zoom 2-8",
-        helpVisibility = "/minimap hide | /minimap show",
-        settingsMissing = "LibAddonMenu-2.0 is missing: the settings menu will not be created.",
-        positionName = "Position",
-        positionTooltip = "Minimap position on the screen.",
-        positionTopLeft = "Top left",
-        positionTopRight = "Top right",
-        positionBottomLeft = "Bottom left",
-        positionBottomRight = "Bottom right",
-        positionLeft = "Center left",
-        positionRight = "Center right",
-        positionTop = "Top center",
-        positionBottom = "Bottom center",
-        sizeName = "Size",
-        sizeTooltip = "Percentage of the screen's smallest dimension.",
-        orientationName = "Orientation",
-        orientationTooltip = "Choose whether north or the player direction stays at the top.",
-        orientationNorth = "North up",
-        orientationPlayer = "Player direction up",
-        opacityName = "Opacity",
-        opacityTooltip = "Minimap opacity.",
-        invalidPosition = "Invalid position. Use tl, tr, bl, br, left, right, top or bottom.",
-        positionChanged = "Position: %s",
-        invalidSize = "Invalid size. Example: /minimap size 22",
-        sizeChanged = "Size: %s%%",
-        invalidOrientation = "Invalid orientation. Use north or player.",
-        orientationChanged = "Orientation: %s",
-        invalidOpacity = "Invalid opacity. Example: /minimap opacity 80",
-        opacityChanged = "Opacity: %s%%",
-        invalidZoom = "Invalid zoom. Example: /minimap zoom 6",
-        zoomChanged = "Zoom: %s",
-        hidden = "Hidden.",
-        shown = "Shown.",
-    },
-    fr = {
-        helpCorner = "/minimap corner tl|tr|bl|br|left|right|top|bottom",
-        helpSize = "/minimap size 10-40",
-        helpOrientation = "/minimap orientation north|player",
-        helpOpacity = "/minimap opacity 20-100",
-        helpZoom = "/minimap zoom 2-8",
-        helpVisibility = "/minimap hide | /minimap show",
-        settingsMissing = "LibAddonMenu-2.0 est introuvable: le menu de settings ne sera pas cree.",
-        positionName = "Position",
-        positionTooltip = "Position de la minimap sur l'ecran.",
-        positionTopLeft = "Haut gauche",
-        positionTopRight = "Haut droite",
-        positionBottomLeft = "Bas gauche",
-        positionBottomRight = "Bas droite",
-        positionLeft = "Centre gauche",
-        positionRight = "Centre droite",
-        positionTop = "Centre haut",
-        positionBottom = "Centre bas",
-        sizeName = "Taille",
-        sizeTooltip = "Pourcentage de la plus petite dimension de l'ecran.",
-        orientationName = "Orientation",
-        orientationTooltip = "Choisit si le nord ou la direction du joueur reste en haut.",
-        orientationNorth = "Nord en haut",
-        orientationPlayer = "Direction du joueur en haut",
-        opacityName = "Transparence",
-        opacityTooltip = "Opacite de la minimap.",
-        invalidPosition = "Position invalide. Utilise tl, tr, bl, br, left, right, top ou bottom.",
-        positionChanged = "Position: %s",
-        invalidSize = "Taille invalide. Exemple: /minimap size 22",
-        sizeChanged = "Taille: %s%%",
-        invalidOrientation = "Orientation invalide. Utilise north ou player.",
-        orientationChanged = "Orientation: %s",
-        invalidOpacity = "Opacite invalide. Exemple: /minimap opacity 80",
-        opacityChanged = "Opacite: %s%%",
-        invalidZoom = "Zoom invalide. Exemple: /minimap zoom 6",
-        zoomChanged = "Zoom: %s",
-        hidden = "Masquee.",
-        shown = "Affichee.",
-    },
-}
 
 local MiniMap = {
     tiles = {},
@@ -135,6 +25,13 @@ end
 local function Print(message)
     if d then
         d("|c80d0ffMiniMap|r " .. message)
+    end
+    if not MiniMap.debugLog then
+        MiniMap.debugLog = {}
+    end
+    table.insert(MiniMap.debugLog, message)
+    if #MiniMap.debugLog > 50 then
+        table.remove(MiniMap.debugLog, 1)
     end
 end
 
@@ -283,10 +180,10 @@ function MiniMap:ApplyLayout()
     self:ApplyDebugLayout()
     self:ApplyCircularClip()
 
-    local playerSize = Clamp(math.floor(self.size * SIZE_FACTOR_PLAYER), 18, 30)
+    local playerSize = Clamp(math.floor(self.size * MINIMAP_SIZE_FACTOR_PLAYER), 18, 30)
     self.player:SetDimensions(playerSize, playerSize)
 
-    self.spotMarkerSize = Clamp(math.floor(self.size * SIZE_FACTOR_SPOT_MARKER), 9, 15)
+    self.spotMarkerSize = Clamp(math.floor(self.size * MINIMAP_SIZE_FACTOR_SPOT_MARKER), 9, 15)
 
     for _, indicator in pairs(self.edgeIndicators) do
         indicator.control:SetDimensions(playerSize, playerSize)
@@ -321,6 +218,128 @@ end
 function MiniMap:Text(key)
     local strings = STRINGS[self.language] or STRINGS.en
     return strings[key] or STRINGS.en[key] or key
+end
+
+function MiniMap:RegisterSettingsMenu()
+    local LAM = LibAddonMenu2
+    if not LAM then
+        Print(self:Text('settingsMissing'))
+        return
+    end
+
+    local panelData = {
+        type = 'panel',
+        name = 'MiniMap',
+        displayName = 'MiniMap',
+        author = 'Codex',
+        version = '1.0.0',
+        slashCommand = '/minimapsettings',
+        registerForRefresh = true,
+        registerForDefaults = true,
+    }
+
+    local optionsTable = {
+        {
+            type = 'dropdown',
+            name = self:Text('positionName'),
+            tooltip = self:Text('positionTooltip'),
+            choices = {
+                self:Text('positionTopLeft'),
+                self:Text('positionTopRight'),
+                self:Text('positionBottomLeft'),
+                self:Text('positionBottomRight'),
+                self:Text('positionLeft'),
+                self:Text('positionRight'),
+                self:Text('positionTop'),
+                self:Text('positionBottom'),
+            },
+            choicesValues = {
+                'topleft',
+                'topright',
+                'bottomleft',
+                'bottomright',
+                'left',
+                'right',
+                'top',
+                'bottom',
+            },
+            getFunc = function()
+                return self.saved.corner
+            end,
+            setFunc = function(value)
+                self.saved.corner = value
+                self:ApplyLayout()
+            end,
+            default = DEFAULTS.corner,
+            width = 'full',
+        },
+        {
+            type = 'slider',
+            name = self:Text('sizeName'),
+            tooltip = self:Text('sizeTooltip'),
+            min = 10,
+            max = 40,
+            step = 1,
+            getFunc = function()
+                return self.saved.sizePercent
+            end,
+            setFunc = function(value)
+                self.saved.sizePercent = Clamp(value, 10, 40)
+                self:ApplyLayout()
+            end,
+            default = DEFAULTS.sizePercent,
+            width = 'full',
+        },
+        {
+            type = 'dropdown',
+            name = self:Text('orientationName'),
+            tooltip = self:Text('orientationTooltip'),
+            choices = { self:Text('orientationNorth'), self:Text('orientationPlayer') },
+            choicesValues = { 'north', 'player' },
+            getFunc = function()
+                return self.saved.orientation
+            end,
+            setFunc = function(value)
+                self.saved.orientation = value
+                self:UpdatePlayer()
+            end,
+            default = DEFAULTS.orientation,
+            width = 'full',
+        },
+        {
+            type = 'slider',
+            name = self:Text('opacityName'),
+            tooltip = self:Text('opacityTooltip'),
+            min = 20,
+            max = 100,
+            step = 5,
+            getFunc = function()
+                return self.saved.opacity or DEFAULTS.opacity
+            end,
+            setFunc = function(value)
+                self.saved.opacity = Clamp(value, 20, 100)
+                self.root:SetAlpha(self.saved.opacity / 100)
+            end,
+            default = DEFAULTS.opacity,
+            width = 'full',
+        },
+        {
+            type = 'checkbox',
+            name = self:Text('autoSaveSpotsName'),
+            tooltip = self:Text('autoSaveSpotsTooltip'),
+            getFunc = function()
+                return self.saved.autoSaveSpots
+            end,
+            setFunc = function(value)
+                self.saved.autoSaveSpots = value
+            end,
+            default = DEFAULTS.autoSaveSpots,
+            width = 'full',
+        },
+    }
+
+    LAM:RegisterAddonPanel('MiniMapSettings', panelData)
+    LAM:RegisterOptionControls('MiniMapSettings', optionsTable)
 end
 
 function MiniMap:SetQuestDebug(values)
@@ -361,7 +380,7 @@ function MiniMap:RegisterEdgeIndicator(id, options)
     local indicator = self.edgeIndicators[id]
     if not indicator then
         local control = WINDOW_MANAGER:CreateControl("MiniMapEdgeIndicator" .. id, self.root, CT_TEXTURE)
-        control:SetTexture(EDGE_INDICATOR_TEXTURE)
+        control:SetTexture(MINIMAP_EDGE_INDICATOR_TEXTURE)
         control:SetDrawLayer(DL_OVERLAY)
         control:SetHidden(true)
 
@@ -485,7 +504,7 @@ end
 function MiniMap:UpdateEdgeIndicators(playerX, playerY, mapRotation)
     local radius = self.size / 2
     local center = radius
-    local markerSize = Clamp(math.floor(self.size * SIZE_FACTOR_EDGE_INDICATOR), 18, 32)
+    local markerSize = Clamp(math.floor(self.size * MINIMAP_SIZE_FACTOR_EDGE_INDICATOR), 18, 32)
     local margin = self.spotMarkerSize
 
     self:UpdateSpotMarkers(playerX, playerY, mapRotation, center, radius, margin)
@@ -706,115 +725,13 @@ function MiniMap:ShowHelp()
     Print(self:Text("helpVisibility"))
     Print("/minimap debug")
     Print("/minimapsettings")
-end
-
-function MiniMap:RegisterSettingsMenu()
-    local LAM = LibAddonMenu2
-    if not LAM then
-        Print(self:Text("settingsMissing"))
-        return
-    end
-
-    local panelData = {
-        type = "panel",
-        name = "MiniMap",
-        displayName = "MiniMap",
-        author = "Codex",
-        version = "1.0.0",
-        slashCommand = "/minimapsettings",
-        registerForRefresh = true,
-        registerForDefaults = true,
-    }
-
-    local optionsTable = {
-        {
-            type = "dropdown",
-            name = self:Text("positionName"),
-            tooltip = self:Text("positionTooltip"),
-            choices = {
-                self:Text("positionTopLeft"),
-                self:Text("positionTopRight"),
-                self:Text("positionBottomLeft"),
-                self:Text("positionBottomRight"),
-                self:Text("positionLeft"),
-                self:Text("positionRight"),
-                self:Text("positionTop"),
-                self:Text("positionBottom"),
-            },
-            choicesValues = {
-                "topleft",
-                "topright",
-                "bottomleft",
-                "bottomright",
-                "left",
-                "right",
-                "top",
-                "bottom",
-            },
-            getFunc = function()
-                return self.saved.corner
-            end,
-            setFunc = function(value)
-                self.saved.corner = value
-                self:ApplyLayout()
-            end,
-            default = DEFAULTS.corner,
-            width = "full",
-        },
-        {
-            type = "slider",
-            name = self:Text("sizeName"),
-            tooltip = self:Text("sizeTooltip"),
-            min = 10,
-            max = 40,
-            step = 1,
-            getFunc = function()
-                return self.saved.sizePercent
-            end,
-            setFunc = function(value)
-                self.saved.sizePercent = Clamp(value, 10, 40)
-                self:ApplyLayout()
-            end,
-            default = DEFAULTS.sizePercent,
-            width = "full",
-        },
-        {
-            type = "dropdown",
-            name = self:Text("orientationName"),
-            tooltip = self:Text("orientationTooltip"),
-            choices = { self:Text("orientationNorth"), self:Text("orientationPlayer") },
-            choicesValues = { "north", "player" },
-            getFunc = function()
-                return self.saved.orientation
-            end,
-            setFunc = function(value)
-                self.saved.orientation = value
-                self:UpdatePlayer()
-            end,
-            default = DEFAULTS.orientation,
-            width = "full",
-        },
-        {
-            type = "slider",
-            name = self:Text("opacityName"),
-            tooltip = self:Text("opacityTooltip"),
-            min = 20,
-            max = 100,
-            step = 5,
-            getFunc = function()
-                return self.saved.opacity or DEFAULTS.opacity
-            end,
-            setFunc = function(value)
-                self.saved.opacity = Clamp(value, 20, 100)
-                self.root:SetAlpha(self.saved.opacity / 100)
-            end,
-            default = DEFAULTS.opacity,
-            width = "full",
-        },
-    }
-
-    LAM:RegisterAddonPanel("MiniMapSettings", panelData)
-    LAM:RegisterOptionControls("MiniMapSettings", optionsTable)
+    Print("/minimap_add <category>")
+    Print("/minimap_spots")
+    Print("/minimap_clear <category>|all")
+    Print("/minimap_log")
+    Print("/minimap_log_clear")
+    Print("/minimap_clean")
+    Print("/minimap_pos")
 end
 
 function MiniMap:HandleSlashCommand(arguments)
@@ -940,28 +857,54 @@ function MiniMap:Initialize()
         MiniMap:RefreshMap(true)
     end)
 
-    local function GetResourceCategory(lootType)
-        if lootType == 26 then return "blacksmithing"
-        elseif lootType == 40 then return "clothier"
-        elseif lootType == 37 then return "woodworking"
-        elseif lootType == 0 then return "jewelrycrafter"
-        elseif lootType == 15 then return "rune_refreme"
-        elseif lootType == 23 then return "alchemy"
-        elseif lootType == 0 then return "poison"
-        elseif lootType == 0 then return "treasure"
+    local lastLootTargetType = nil
+    local lastLootTargetName = nil
+
+    EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_LOOT_UPDATED", EVENT_LOOT_UPDATED, function()
+        local lootName, actionName, isOwned = GetLootTargetInfo()
+        
+        local isMonster = IsGameCameraInteractableUnitMonster()
+        
+        if lootName and lootName ~= "" then
+            if isMonster then
+                lastLootTargetType = "MONSTER"
+            else
+                lastLootTargetType = "OBJECT"
+            end
+            lastLootTargetName = lootName
+        elseif isMonster then
+            lastLootTargetType = "MONSTER"
         end
-        return nil
+    end)
+
+    EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_LOOT_CLOSED", EVENT_LOOT_CLOSED, function()
+        lastLootTargetType = nil
+        lastLootTargetName = nil
+    end)
+
+    local function PrintSpotAdded(category)
+        Print("Spot of category " .. category .. " added to database")
     end
 
-    EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_LOOT", EVENT_LOOT_RECEIVED, function(eventCode, itemName, quantity, itemSound, lootType, lootedBySelf)
-        Print("LOOT type=" .. lootType)
-        local category = GetResourceCategory(lootType)
-        Print("category=" .. tostring(category))
-        if category then
-            local x, y, _ = GetMapPlayerPosition("player")
-            if x and y then
-                SpotDatabase:AddSpot(x, y, category, self.currentMapName)
-                Print("Saved " .. category .. " spot")
+    EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_LOOT", EVENT_LOOT_RECEIVED, function(eventCode, characterName, itemName, quantity, lootType, lootedBySelf)
+        print("LOOT" .. " itemName=" .. itemName .. " lootType=" .. lootType)
+
+        if not MiniMap.saved.autoSaveSpots then
+            return
+        end
+        if lastLootTargetType == "MONSTER" then
+            return
+        end
+        
+        local category = SpotDatabase:GetResourceCategory(lootType)
+        if not category then
+            return
+        end
+
+        local x, y, _ = GetMapPlayerPosition("player")
+        if x and y then
+            if SpotDatabase:AddSpot(x, y, category, self.currentMapName) then
+                PrintSpotAdded(category)
             end
         end
     end)
@@ -969,10 +912,9 @@ function MiniMap:Initialize()
     local function AddCurrentSpot(category)
         local x, y, _ = GetMapPlayerPosition("player")
         if x and y then
-            SpotDatabase:AddSpot(x, y, category, self.currentMapName)
-            Print("Added " .. category .. " spot at " .. string.format("%.4f, %.4f", x, y))
-        else
-            Print("Cannot add spot: position unknown")
+            if SpotDatabase:AddSpot(x, y, category, self.currentMapName) then
+                PrintSpotAdded(category)
+            end
         end
     end
 
@@ -1005,17 +947,57 @@ function MiniMap:Initialize()
         end
     end
 
+    local pendingClearConfirm = nil
+    
     SLASH_COMMANDS["/minimap_clear"] = function(arguments)
         local category = zo_strlower(arguments or "")
         if category == "all" then
-            SpotDatabase:Clear()
-            Print("All spots cleared")
+            if pendingClearConfirm then
+                SpotDatabase:Clear()
+                Print("All spots cleared")
+                pendingClearConfirm = nil
+            else
+                pendingClearConfirm = "all"
+                Print("Confirm: type /minimap_clear all again to clear ALL spots")
+            end
         elseif IsValidCategory(category) then
             SpotDatabase:Clear(category)
             Print(category .. " spots cleared")
+        elseif category == "cancel" then
+            pendingClearConfirm = nil
+            Print("Clear cancelled")
         else
-            Print("Usage: /minimap_clear <category>|all")
+            Print("Usage: /minimap_clear <category>|all|cancel")
         end
+    end
+
+    SLASH_COMMANDS["/minimap_log"] = function()
+        if not MiniMap.debugLog or #MiniMap.debugLog == 0 then
+            Print("No debug log")
+            return
+        end
+        for i, msg in ipairs(MiniMap.debugLog) do
+            d("[" .. i .. "] " .. msg)
+        end
+    end
+    
+    SLASH_COMMANDS["/minimap_log_clear"] = function()
+        MiniMap.debugLog = {}
+        Print("Debug log cleared")
+    end
+
+    SLASH_COMMANDS["/minimap_pos"] = function()
+        local x, y = GetMapPlayerPosition("player")
+        if x and y then
+            Print("Position: " .. string.format("%.4f, %.4f", x, y))
+        else
+            Print("Position unknown")
+        end
+    end
+
+    SLASH_COMMANDS["/minimap_clean"] = function()
+        local removed = SpotDatabase:CleanDuplicates(true)
+        Print(tostring(removed) .. " removed")
     end
 end
 
