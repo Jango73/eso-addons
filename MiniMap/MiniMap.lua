@@ -11,7 +11,11 @@ local DEFAULTS = {
     showResourceIndicators = true,
 }
 
-local EDGE_INDICATOR_TEXTURE = "MiniMap\\media\\edge_indicator_triangle.dds"
+local SpotMarker_ = "SpotMarker"
+
+local SIZE_FACTOR_PLAYER = 0.1
+local SIZE_FACTOR_SPOT_MARKER = 0.045
+local SIZE_FACTOR_EDGE_INDICATOR = 0.08
 
 local SpotDatabase = {
     _data = nil,
@@ -29,6 +33,8 @@ local RESOURCE_CATEGORIES = {
     { key = "poison", color = { 0.4, 0.8, 0.4, 1 } },
     { key = "treasure", color = { 1, 0.84, 0, 1 } },
 }
+
+local EDGE_INDICATOR_TEXTURE = "MiniMap\\media\\edge_indicator_triangle.dds"
 
 function SpotDatabase:Init(savedVars)
     self._data = savedVars
@@ -341,6 +347,9 @@ function MiniMap:CreateControls()
     self.debugBackground = debugBackground
     self.debugLabel = debugLabel
 
+    self.spotMarkers = {}
+    self.spotMarkersInitialized = false
+
     self:RegisterEdgeIndicator("activeQuest", {
         color = { 1, 1, 1, 1 },
         provider = function()
@@ -376,8 +385,10 @@ function MiniMap:ApplyLayout()
     self:ApplyDebugLayout()
     self:ApplyCircularClip()
 
-    local playerSize = Clamp(math.floor(self.size * 0.12), 18, 30)
+    local playerSize = Clamp(math.floor(self.size * SIZE_FACTOR_PLAYER), 18, 30)
     self.player:SetDimensions(playerSize, playerSize)
+
+    self.spotMarkerSize = Clamp(math.floor(self.size * SIZE_FACTOR_SPOT_MARKER), 9, 15)
 
     for _, indicator in pairs(self.edgeIndicators) do
         indicator.control:SetDimensions(playerSize, playerSize)
@@ -576,7 +587,10 @@ end
 function MiniMap:UpdateEdgeIndicators(playerX, playerY, mapRotation)
     local radius = self.size / 2
     local center = radius
-    local markerSize = Clamp(math.floor(self.size * 0.1), 18, 32)
+    local markerSize = Clamp(math.floor(self.size * SIZE_FACTOR_EDGE_INDICATOR), 18, 32)
+    local margin = self.spotMarkerSize
+
+    self:UpdateSpotMarkers(playerX, playerY, mapRotation, center, radius, margin)
 
     for _, id in ipairs(self.edgeIndicatorOrder) do
         local indicator = self.edgeIndicators[id]
@@ -587,26 +601,86 @@ function MiniMap:UpdateEdgeIndicators(playerX, playerY, mapRotation)
             local dy = (targetY - playerY) * self.mapSize
             dx, dy = RotateVector(dx, dy, mapRotation)
 
-            local length = math.sqrt((dx * dx) + (dy * dy))
-            if length > 0.0001 then
-                local unitX = dx / length
-                local unitY = dy / length
-                local edgeRadius = radius - (markerSize * 0.34)
+            local localX = center + dx
+            local localY = center + dy
+            local distFromCenter = math.sqrt((localX - center) ^ 2 + (localY - center) ^ 2)
 
-                indicator.control:SetDimensions(markerSize, markerSize)
-                indicator.control:ClearAnchors()
-                indicator.control:SetAnchor(CENTER, self.root, TOPLEFT, center + (unitX * edgeRadius), center + (unitY * edgeRadius))
-
-                if indicator.control.SetTextureRotation then
-                    indicator.control:SetTextureRotation(GetRotationFromUp(unitX, unitY))
-                end
-
-                indicator.control:SetHidden(false)
-            else
+            if distFromCenter < (radius - margin) then
                 indicator.control:SetHidden(true)
+            else
+                local length = math.sqrt((dx * dx) + (dy * dy))
+                if length > 0.0001 then
+                    local unitX = dx / length
+                    local unitY = dy / length
+                    local edgeRadius = radius - (markerSize * 0.34)
+
+                    indicator.control:SetDimensions(markerSize, markerSize)
+                    indicator.control:ClearAnchors()
+                    indicator.control:SetAnchor(CENTER, self.root, TOPLEFT, center + (unitX * edgeRadius), center + (unitY * edgeRadius))
+
+                    if indicator.control.SetTextureRotation then
+                        indicator.control:SetTextureRotation(GetRotationFromUp(unitX, unitY))
+                    end
+
+                    indicator.control:SetHidden(false)
+                else
+                    indicator.control:SetHidden(true)
+                end
             end
         else
             indicator.control:SetHidden(true)
+        end
+    end
+end
+
+function MiniMap:UpdateSpotMarkers(playerX, playerY, mapRotation, center, radius, margin)
+    if not self.spotMarkersInitialized then
+        local MAX_MARKERS_PER_CAT = 10
+        for _, cat in ipairs(RESOURCE_CATEGORIES) do
+            self.spotMarkers[cat.key] = {}
+            for i = 1, MAX_MARKERS_PER_CAT do
+                local controlName = self.root:GetName() .. SpotMarker_ .. cat.key .. i
+                local control = WINDOW_MANAGER:CreateControl(controlName, self.root, CT_BACKDROP)
+                control:SetDrawLayer(DL_OVERLAY)
+                control:SetCenterColor(cat.color[1], cat.color[2], cat.color[3], 1)
+                control:SetEdgeColor(0, 0, 0, 1)
+                control:SetEdgeTexture(nil, 1, 1, 2)
+                control:SetHidden(true)
+                self.spotMarkers[cat.key][i] = control
+            end
+        end
+        self.spotMarkersInitialized = true
+    end
+
+    for _, cat in ipairs(RESOURCE_CATEGORIES) do
+        local markers = self.spotMarkers[cat.key]
+        local spots = SpotDatabase._data[cat.key] or {}
+        local markerIndex = 1
+        local currentMap = self.currentMapName
+
+        for _, spot in ipairs(spots) do
+            if spot.map == currentMap then
+                local dx = (spot.x - playerX) * self.mapSize
+                local dy = (spot.y - playerY) * self.mapSize
+                dx, dy = RotateVector(dx, dy, mapRotation)
+
+                local localX = center + dx
+                local localY = center + dy
+                local distFromCenter = math.sqrt((localX - center) ^ 2 + (localY - center) ^ 2)
+
+                if distFromCenter < (radius - margin) and markerIndex <= #markers then
+                    local marker = markers[markerIndex]
+                    marker:ClearAnchors()
+                    marker:SetAnchor(CENTER, self.root, TOPLEFT, localX, localY)
+                    marker:SetDimensions(self.spotMarkerSize, self.spotMarkerSize)
+                    marker:SetHidden(false)
+                    markerIndex = markerIndex + 1
+                end
+            end
+        end
+
+        for i = markerIndex, #markers do
+            markers[i]:SetHidden(true)
         end
     end
 end
