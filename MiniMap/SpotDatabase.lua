@@ -1,256 +1,109 @@
-local SpotDatabase = {
-    spots = {},
-    categories = {
-        FORGE = "forge",
-        WOOD = "wood",
-        PLANT = "plant",
-        CHEST = "chest",
-    },
-    SPOT_RADIUS = 0.0001,
+
+SpotDatabase = {
+    _data = nil,
+}
+SpotDatabase.__index = SpotDatabase
+
+RESOURCE_CATEGORIES = {
+    { key = 'blacksmithing', color = { 1, 0.5, 0, 1 } },
+    { key = 'clothier', color = { 0.8, 0.6, 0.4, 1 } },
+    { key = 'woodworking', color = { 0.6, 0.4, 0.2, 1 } },
+    { key = 'jewelrycrafter', color = { 0.9, 0.7, 0.2, 1 } },
+    { key = 'wood', color = { 0.5, 0.35, 0.15, 1 } },
+    { key = 'rune_refreme', color = { 0.5, 0.2, 1, 1 } },
+    { key = 'alchemy', color = { 0.2, 0.8, 0.2, 1 } },
+    { key = 'poison', color = { 0.4, 0.8, 0.4, 1 } },
+    { key = 'treasure', color = { 1, 0.84, 0, 1 } },
 }
 
-local SpotDatabase_mt = { __index = SpotDatabase }
-
-function SpotDatabase:New()
-    local instance = setmetatable({}, SpotDatabase_mt)
-    return instance
+function SpotDatabase:Init(savedVars)
+    self._data = savedVars
 end
 
-function SpotDatabase:AddSpot(x, y, category)
-    if not x or not y or not category then
+function SpotDatabase:AddSpot(x, y, category, mapName)
+    if not self._data then
         return false
     end
+    if not x or not y or not category then return false end
+    if not self._data[category] then self._data[category] = {} end
 
-    if not self.spots[category] then
-        self.spots[category] = {}
-    end
+    local threshold = 0.0001
+    local thresholdSq = threshold * threshold
+    local currentMap = mapName or GetMapName()
 
-    table.insert(self.spots[category], {
-        x = x,
-        y = y,
-        timestamp = GetTimeStamp(),
-    })
-
-    return true
-end
-
-function SpotDatabase:RemoveSpotsNear(x, y, category, radius)
-    radius = radius or self.SPOT_RADIUS
-
-    if category then
-        self:RemoveSpotsInCategory(category, x, y, radius)
-    else
-        for cat, _ in pairs(self.categories) do
-            self:RemoveSpotsInCategory(cat, x, y, radius)
-        end
-    end
-end
-
-function SpotDatabase:RemoveSpotsInCategory(category, x, y, radius)
-    if not self.spots[category] then
-        return
-    end
-
-    local newSpots = {}
-    for _, spot in ipairs(self.spots[category]) do
-        local dx = spot.x - x
-        local dy = spot.y - y
-        local distance = (dx * dx) + (dy * dy)
-        if distance > (radius * radius) then
-            table.insert(newSpots, spot)
-        end
-    end
-    self.spots[category] = newSpots
-end
-
-function SpotDatabase:GetNearestSpot(x, y, category, maxCount)
-    if not x or not y then
-        return nil
-    end
-
-    maxCount = maxCount or 1
-    local candidates = {}
-
-    if category then
-        candidates = self:GetSpotsInCategory(category)
-    else
-        for cat, _ in pairs(self.categories) do
-            for _, spot in ipairs(self.spots[cat] or {}) do
-                table.insert(candidates, {
-                    x = spot.x,
-                    y = spot.y,
-                    category = cat,
-                    distanceSq = self:CalculateDistanceSq(x, y, spot.x, spot.y),
-                })
+    for i, s in ipairs(self._data[category]) do
+        if s.map == currentMap then
+            local dx = s.x - x
+            local dy = s.y - y
+            if (dx * dx + dy * dy) <= thresholdSq then
+                self._data[category][i] = { x = x, y = y, map = currentMap, ts = GetTimeStamp() }
+                return true
             end
         end
     end
 
-    if category and not candidates[1] then
-        candidates = self:GetSpotsInCategory(category)
-    end
-
-    table.sort(candidates, function(a, b)
-        return a.distanceSq < b.distanceSq
-    end)
-
-    local results = {}
-    for i = 1, math.min(maxCount, #candidates) do
-        if candidates[i] then
-            table.insert(results, {
-                x = candidates[i].x,
-                y = candidates[i].y,
-                category = candidates[i].category or category,
-                distance = math.sqrt(candidates[i].distanceSq),
-            })
-        end
-    end
-
-    return results
+    table.insert(self._data[category], { x = x, y = y, map = currentMap, ts = GetTimeStamp() })
+    return true
 end
 
-function SpotDatabase:GetNearestSpotByCategory(x, y, maxCount)
-    if not x or not y then
-        return {}
-    end
-
+function SpotDatabase:GetNearestSpot(px, py, category, maxCount, mapName)
+    if not px or not py then return nil end
     maxCount = maxCount or 1
+    local spots = self._data[category] or {}
+    local currentMap = mapName or GetMapName()
+
+    local best = nil
+    local bestDistSq = nil
+
+    for _, s in ipairs(spots) do
+        if s.map == currentMap then
+            local dx, dy = s.x - px, s.y - py
+            local distSq = (dx * dx) + (dy * dy)
+            if not bestDistSq or distSq < bestDistSq then
+                best = s
+                bestDistSq = distSq
+            end
+        end
+    end
+
+    if best then
+        return { x = best.x, y = best.y, category = category, distance = math.sqrt(bestDistSq) }
+    end
+    return nil
+end
+
+function SpotDatabase:GetNearestSpotByCategory(px, py, maxCount, mapName)
+    if not px or not py then return {} end
+    maxCount = maxCount or 1
+    local currentMap = mapName or GetMapName()
     local results = {}
-
-    for cat, _ in pairs(self.categories) do
-        local nearest = self:GetNearestSpot(x, y, cat, 1)
-        if nearest and nearest[1] then
-            table.insert(results, nearest[1])
+    for cat, _ in pairs(self._data) do
+        if type(cat) == 'string' then
+            local nearest = self:GetNearestSpot(px, py, cat, 1, currentMap)
+            if nearest then table.insert(results, nearest) end
         end
     end
-
-    table.sort(results, function(a, b)
-        return a.distance < b.distance
-    end)
-
+    table.sort(results, function(a, b) return (a.distance or 0) < (b.distance or 0) end)
     return results
-end
-
-function SpotDatabase:GetSpotsInCategory(category)
-    if not self.spots[category] then
-        return {}
-    end
-
-    local result = {}
-    for _, spot in ipairs(self.spots[category]) do
-        table.insert(result, {
-            x = spot.x,
-            y = spot.y,
-            category = category,
-            distanceSq = 0,
-        })
-    end
-    return result
-end
-
-function SpotDatabase:GetSpotsNear(x, y, radius, category)
-    if not x or not y then
-        return {}
-    end
-
-    radius = radius or 0.1
-    local radiusSq = radius * radius
-    local results = {}
-
-    if category then
-        self:CollectSpotsNear(x, y, radiusSq, category, results)
-    else
-        for cat, _ in pairs(self.categories) do
-            self:CollectSpotsNear(x, y, radiusSq, cat, results)
-        end
-    end
-
-    table.sort(results, function(a, b)
-        return a.distanceSq < b.distanceSq
-    end)
-
-    for _, spot in ipairs(results) do
-        spot.distance = math.sqrt(spot.distanceSq)
-        spot.distanceSq = nil
-    end
-
-    return results
-end
-
-function SpotDatabase:CollectSpotsNear(x, y, radiusSq, category, results)
-    if not self.spots[category] then
-        return
-    end
-
-    for _, spot in ipairs(self.spots[category]) do
-        local dx = spot.x - x
-        local dy = spot.y - y
-        local distSq = (dx * dx) + (dy * dy)
-        if distSq <= radiusSq then
-            table.insert(results, {
-                x = spot.x,
-                y = spot.y,
-                category = category,
-                distanceSq = distSq,
-            })
-        end
-    end
-end
-
-function SpotDatabase:CalculateDistanceSq(x1, y1, x2, y2)
-    local dx = x2 - x1
-    local dy = y2 - y1
-    return (dx * dx) + (dy * dy)
-end
-
-function SpotDatabase:GetSpotCount(category)
-    if category then
-        return #(self.spots[category] or {})
-    end
-
-    local total = 0
-    for cat, _ in pairs(self.categories) do
-        total = total + #(self.spots[cat] or {})
-    end
-    return total
 end
 
 function SpotDatabase:Clear(category)
-    if category then
-        self.spots[category] = {}
-    else
-        for cat, _ in pairs(self.categories) do
-            self.spots[cat] = {}
-        end
-    end
+    if category then self._data[category] = {}
+    else for k in pairs(self._data) do if type(k) == 'string' then self._data[k] = {} end end end
 end
 
-function SpotDatabase:Save()
-    local data = {}
-    for category, spots in pairs(self.spots) do
-        data[category] = spots
-    end
-    return data
+function SpotDatabase:GetSpots(category)
+    if not category then return {} end
+    return self._data[category] or {}
 end
 
-function SpotDatabase:Load(data)
-    if not data then
-        return
+function SpotDatabase:GetSpotCount(category)
+    if category then return #(self._data[category] or {}) end
+    local t = 0
+    for k, v in pairs(self._data) do
+        if type(k) == 'string' and type(v) == 'table' then t = t + #v end
     end
-
-    for category, spots in pairs(data) do
-        if self.categories[category] or type(category) == "string" then
-            self.spots[category] = spots or {}
-        end
-    end
+    return t
 end
 
-function SpotDatabase:GetAllCategories()
-    local result = {}
-    for cat, _ in pairs(self.categories) do
-        table.insert(result, cat)
-    end
-    return result
-end
-
-return SpotDatabase
+return SpotDatabase, RESOURCE_CATEGORIES
