@@ -5,8 +5,9 @@ SpotDatabase = {
 SpotDatabase.__index = SpotDatabase
 
 RESOURCE_CATEGORIES = {
+    { key = 'book', color = { 0.8, 0.3, 0, 1 } },
     { key = 'chest', color = { 1, 0.84, 0, 1 } },
-    { key = 'jewelrycrafter', color = { 0.9, 0.7, 0.2, 1 } },
+    { key = 'jewelry', color = { 0.9, 0.7, 0.2, 1 } },
     { key = 'ore', color = { 1, 0.5, 0, 1 } },
     { key = 'plant', color = { 0.2, 0.8, 0.2, 1 } },
     { key = 'poison', color = { 0.5, 0.5, 0.5, 1 } },
@@ -190,7 +191,7 @@ function SpotDatabase:GetResourceCategory(lootType)
     elseif lootType == 26 then return 'ore'
     elseif lootType == 37 then return 'wood'
     elseif lootType == 40 then return 'silk'
-    -- elseif lootType == 0 then return 'jewelrycrafter'
+    -- elseif lootType == 0 then return 'jewelry'
     -- elseif lootType == 0 then return 'poison'
     -- elseif lootType == 0 then return 'treasure'
     end

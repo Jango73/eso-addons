@@ -1,6 +1,8 @@
 
 local ADDON_NAME = "MiniMap"
 local SpotMarker_ = "SpotMarker"
+local ROUTE_SEGMENT_MAX = 200
+local ROUTE_COLOR = { 0, 1, 1, 1 }
 
 local MiniMap = {
     tiles = {},
@@ -264,6 +266,10 @@ function MiniMap:CreateControls()
     self.spotMarkers = {}
     self.spotMarkersInitialized = false
 
+    self.routeSegments = {}
+    self.routeSegmentsInitialized = false
+    self.routeMarker = nil
+
     self:RegisterEdgeIndicator("activeQuest", {
         color = { 1, 1, 1, 1 },
         provider = function()
@@ -510,14 +516,23 @@ function MiniMap:UpdateDebugLabel()
     for _, cat in ipairs(RESOURCE_CATEGORIES) do
         spotInfo = spotInfo .. string.format("%s=%d ", cat.key, SpotDatabase:GetSpotCount(cat.key))
     end
+
+    local routeInfo = ""
+    if self.routeManager:IsRouteActive() then
+        local route = self.routeManager:GetRoute()
+        local segments = self.routeManager:GetRouteSegments()
+        routeInfo = "\nRoute: " .. tostring(#route) .. " spots, " .. tostring(#segments) .. " segs"
+    end
+
     local text = string.format(
-        "MiniMap debug\nSpots: %s\nmap=%s\nquest=%s\nplayer=%.4f,%.4f target=%s",
+        "MiniMap debug\nSpots: %s\nmap=%s\nquest=%s\nplayer=%.4f,%.4f target=%s%s",
         spotInfo,
         tostring(self.currentMapName or ""),
         tostring(debug.questIndex or "nil"),
         debug.playerX or 0,
         debug.playerY or 0,
-        debug.target and string.format("%.4f,%.4f", debug.targetX, debug.targetY) or "nil"
+        debug.target and string.format("%.4f,%.4f", debug.targetX, debug.targetY) or "nil",
+        routeInfo
     )
 
     self.debugLabel:SetText(text)
@@ -656,6 +671,7 @@ function MiniMap:UpdateEdgeIndicators(playerX, playerY, mapRotation)
     local margin = self.spotMarkerSize
 
     self:UpdateSpotMarkers(playerX, playerY, mapRotation, center, radius, margin)
+    self:UpdateRouteSegments(playerX, playerY, mapRotation, center, radius)
 
     for _, id in ipairs(self.edgeIndicatorOrder) do
         local indicator = self.edgeIndicators[id]
@@ -747,6 +763,79 @@ function MiniMap:UpdateSpotMarkers(playerX, playerY, mapRotation, center, radius
         for i = markerIndex, #markers do
             markers[i]:SetHidden(true)
         end
+    end
+end
+
+function MiniMap:UpdateRouteSegments(playerX, playerY, mapRotation, center, radius)
+    if not self.routeSegmentsInitialized then
+        for i = 1, ROUTE_SEGMENT_MAX do
+            local controlName = self.root:GetName() .. "RouteSegment" .. i
+            local control = WINDOW_MANAGER:CreateControl(controlName, self.root, CT_TEXTURE)
+            control:SetDrawLayer(DL_OVERLAY)
+            control:SetTexture(MINIMAP_SEGMENT_TEXTURE)
+            control:SetHidden(true)
+            self.routeSegments[i] = control
+        end
+        self.routeSegmentsInitialized = true
+    end
+
+    self.routeManager:RecalculateIfNeeded(playerX, playerY, self.currentMapName)
+    local segments = self.routeManager:GetRouteSegments()
+
+    local debugText = "RouteSegs=" .. tostring(#segments)
+
+    for i, segment in ipairs(segments) do
+        local control = self.routeSegments[i]
+        if not control then break end
+
+        local x1 = (segment.x1 - playerX) * self.mapSize
+        local y1 = (segment.y1 - playerY) * self.mapSize
+        local x2 = (segment.x2 - playerX) * self.mapSize
+        local y2 = (segment.y2 - playerY) * self.mapSize
+
+        x1, y1 = RotateVector(x1, y1, mapRotation)
+        x2, y2 = RotateVector(x2, y2, mapRotation)
+
+        local localX1 = center + x1
+        local localY1 = center + y1
+        local localX2 = center + x2
+        local localY2 = center + y2
+
+        local dx = localX2 - localX1
+        local dy = localY2 - localY1
+        local length = math.sqrt(dx * dx + dy * dy)
+        local angle = 0
+        if length > 0.0001 then
+            local unitX = dx / length
+            local unitY = dy / length
+            angle = GetRotationFromUp(unitX, unitY) + math.pi / 2
+        end
+
+        debugText = debugText .. " l" .. i .. "=" .. string.format("%.0f", length)
+
+        if length > 3 then
+            local midX = (localX1 + localX2) / 2
+            local midY = (localY1 + localY2) / 2
+            control:ClearAnchors()
+            control:SetAnchor(CENTER, self.root, TOPLEFT, midX, midY)
+            control:SetDimensions(math.max(length, 4), 4)
+            control:SetColor(0, 1, 1, 1)
+            control:SetTextureRotation(angle)
+            control:SetHidden(false)
+        else
+            control:SetHidden(true)
+        end
+    end
+
+    for i = #segments + 1, ROUTE_SEGMENT_MAX do
+        if self.routeSegments[i] then
+            self.routeSegments[i]:SetHidden(true)
+        end
+    end
+
+    if self.saved.debug then
+        self.questDebug = self.questDebug or {}
+        self.questDebug.route = debugText
     end
 end
 
@@ -880,6 +969,9 @@ function MiniMap:ShowHelp()
     Print("/minimap_log_clear")
     Print("/minimap_clean")
     Print("/minimap_pos")
+    Print("/minimap_route <category1 category2 ...>")
+    Print("/minimap_route_clear")
+    Print("/minimap_route_info")
 end
 
 function MiniMap:HandleSlashCommand(arguments)
@@ -933,7 +1025,7 @@ function MiniMap:HandleSlashCommand(arguments)
             return
         end
 
-        self.saved.zoom = Clamp(zoom, 2, 8)
+        self.saved.zoom = Clamp(zoom, 2, 16)
         self:ApplyLayout()
         Print(string.format(self:Text("zoomChanged"), self.saved.zoom))
     elseif command == "hide" or command == "masquer" then
@@ -963,6 +1055,9 @@ function MiniMap:Initialize()
     self.spots = ZO_SavedVars:NewAccountWide("MiniMapSpots", 1, nil, SPOT_DEFAULTS)
     SpotDatabase:Init(self.spots)
     local count = SpotDatabase:GetSpotCount()
+
+    self.routeManager = RouteManager
+    self.routeManager:Init()
 
     self.language = GetLanguage()
 
@@ -1151,6 +1246,50 @@ function MiniMap:Initialize()
     SLASH_COMMANDS["/minimap_clean"] = function()
         local removed = SpotDatabase:CleanDuplicates(true)
         Print(tostring(removed) .. " removed")
+    end
+
+    local function IsValidCategory(cat)
+        for _, c in ipairs(RESOURCE_CATEGORIES) do
+            if c.key == cat then return true end
+        end
+        return false
+    end
+
+    SLASH_COMMANDS["/minimap_route"] = function(arguments)
+        local categories = {}
+        for cat in string.gmatch(arguments or "", "%S+") do
+            if IsValidCategory(cat) then
+                table.insert(categories, cat)
+            end
+        end
+
+        if #categories == 0 then
+            Print("Usage: /minimap_route <category1 category2 ...>")
+            Print("Available: chest jewelry ore plant poison rune silk thief_chest water wood")
+            return
+        end
+
+        RouteManager:ClearCategories()
+        for _, cat in ipairs(categories) do
+            RouteManager:ToggleCategory(cat)
+        end
+
+        RouteManager:CalculateRoute(MiniMap.playerMapX, MiniMap.playerMapY, MiniMap.currentMapName)
+        Print(RouteManager:GetRouteInfo())
+    end
+
+    SLASH_COMMANDS["/minimap_route_clear"] = function()
+        RouteManager:ClearCategories()
+        RouteManager:ClearRoute()
+        Print("Route cleared")
+    end
+
+    SLASH_COMMANDS["/minimap_route_info"] = function()
+        if RouteManager:IsRouteActive() then
+            Print(RouteManager:GetRouteInfo())
+        else
+            Print("No route active")
+        end
     end
 end
 

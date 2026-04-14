@@ -10,4 +10,5 @@
 MiniMapConstants.lua
 SpotDatabase.lua
 Settings.lua
+RouteManager.lua
 MiniMap.lua
