@@ -1014,7 +1014,11 @@ function MiniMap:UpdatePlayer()
         self.map:SetTextureRotation(mapRotation, normalizedX, normalizedY)
     end
 
-    self:UpdateEdgeIndicators(normalizedX, normalizedY, mapRotation)
+    local elementRotation = 0
+    if self.saved.orientation == "player" then
+        elementRotation = (heading or GetPlayerCameraHeading and GetPlayerCameraHeading() or 0)
+    end
+    self:UpdateEdgeIndicators(normalizedX, normalizedY, elementRotation)
 
     if self.player.SetTextureRotation then
         if self.saved.orientation == "player" then
