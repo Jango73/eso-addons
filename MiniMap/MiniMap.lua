@@ -10,7 +10,6 @@
 local ADDON_NAME = "MiniMap"
 local SpotMarker_ = "SpotMarker"
 local ROUTE_SEGMENT_MAX = 200
-local ROUTE_COLOR = { 0, 1, 1, 1 }
 
 local MiniMap = {
     tiles = {},
@@ -279,28 +278,24 @@ function MiniMap:CreateControls()
     self.routeSegmentsInitialized = false
     self.routeMarker = nil
 
-    self:RegisterEdgeIndicator("activeQuest", {
-        color = { 1, 1, 1, 1 },
+    self:RegisterEdgeIndicator(MINIMAP_EDGE_INDICATOR_QUEST, {
+        color = MINIMAP_QUEST_COLOR,
         provider = function()
             return self:GetActiveQuestTargetPosition()
         end,
     })
 
-    for _, cat in ipairs(RESOURCE_CATEGORIES) do
-        self:RegisterEdgeIndicator(cat.key, {
-            color = cat.color,
-            provider = (function(category)
-                return function()
-                    return self:GetNearestResourceSpot(category)
-                end
-            end)(cat.key),
-        })
-    end
-
-    self:RegisterEdgeIndicator("wayshrine", {
+    self:RegisterEdgeIndicator(MINIMAP_EDGE_INDICATOR_WAYSHRINE, {
         color = { 0.5, 0.8, 1, 1 },
         provider = function()
             return self:GetNearestWayshrinePosition()
+        end,
+    })
+
+    self:RegisterEdgeIndicator(MINIMAP_EDGE_INDICATOR_ROUTE, {
+        color = MINIMAP_ROUTE_COLOR,
+        provider = function()
+            return self:GetNearestRoutePoint()
         end,
     })
 end
@@ -572,7 +567,7 @@ function MiniMap:RegisterEdgeIndicator(id, options)
     end
 
     indicator.provider = options.provider
-    indicator.color = options.color or { 1, 1, 1, 1 }
+    indicator.color = { options.color[1], options.color[2], options.color[3], options.color[4] }
 
     indicator.control:SetColor(indicator.color[1], indicator.color[2], indicator.color[3], indicator.color[4] or 1)
 end
@@ -711,6 +706,72 @@ function MiniMap:GetNearestResourceSpot(category)
     return nil
 end
 
+function MiniMap:GetNearestRoutePoint()
+    if not self.playerMapX or not self.playerMapY then
+        return nil
+    end
+
+    local segments = self.routeManager:GetRouteSegments()
+    if not segments or #segments == 0 then
+        return nil
+    end
+
+    local px, py = self.playerMapX, self.playerMapY
+    local nearestX, nearestY
+    local nearestDistSq = math.huge
+
+    for _, segment in ipairs(segments) do
+        local x1, y1, x2, y2 = segment.x1, segment.y1, segment.x2, segment.y2
+
+        local dx = x2 - x1
+        local dy = y2 - y1
+        local lengthSq = dx * dx + dy * dy
+
+        local projX, projY
+        if lengthSq < 0.00000001 then
+            projX, projY = x1, y1
+        else
+            local t = ((px - x1) * dx + (py - y1) * dy) / lengthSq
+            t = math.max(0, math.min(1, t))
+            projX = x1 + t * dx
+            projY = y1 + t * dy
+        end
+
+        local distDx = px - projX
+        local distDy = py - projY
+        local distSq = distDx * distDx + distDy * distDy
+
+        if distSq < nearestDistSq then
+            nearestDistSq = distSq
+            nearestX, nearestY = projX, projY
+        end
+    end
+
+    return nearestX, nearestY
+end
+
+local function PositionEdgeIndicatorAtEdge(indicator, root, center, radius, dx, dy, markerSize)
+    local length = math.sqrt((dx * dx) + (dy * dy))
+    if length <= 0.0001 then
+        indicator.control:SetHidden(true)
+        return
+    end
+
+    local unitX = dx / length
+    local unitY = dy / length
+    local edgeRadius = radius - (markerSize * 0.34)
+
+    indicator.control:SetDimensions(markerSize, markerSize)
+    indicator.control:ClearAnchors()
+    indicator.control:SetAnchor(CENTER, root, TOPLEFT, center + (unitX * edgeRadius), center + (unitY * edgeRadius))
+
+    if indicator.control.SetTextureRotation then
+        indicator.control:SetTextureRotation(GetRotationFromUp(unitX, unitY))
+    end
+
+    indicator.control:SetHidden(false)
+end
+
 function MiniMap:UpdateEdgeIndicators(playerX, playerY, mapRotation)
     local radius = self.size / 2
     local center = radius
@@ -733,47 +794,10 @@ function MiniMap:UpdateEdgeIndicators(playerX, playerY, mapRotation)
             local localY = center + dy
             local distFromCenter = math.sqrt((localX - center) ^ 2 + (localY - center) ^ 2)
 
-            local isWayshrine = (id == "wayshrine")
-            if isWayshrine then
-                local length = math.sqrt((dx * dx) + (dy * dy))
-                if length > 0.0001 then
-                    local unitX = dx / length
-                    local unitY = dy / length
-                    local edgeRadius = radius - (markerSize * 0.34)
-
-                    indicator.control:SetDimensions(markerSize, markerSize)
-                    indicator.control:ClearAnchors()
-                    indicator.control:SetAnchor(CENTER, self.root, TOPLEFT, center + (unitX * edgeRadius), center + (unitY * edgeRadius))
-
-                    if indicator.control.SetTextureRotation then
-                        indicator.control:SetTextureRotation(GetRotationFromUp(unitX, unitY))
-                    end
-
-                    indicator.control:SetHidden(false)
-                else
-                    indicator.control:SetHidden(true)
-                end
-            elseif distFromCenter < (radius - margin) then
-                indicator.control:SetHidden(true)
+            if id == MINIMAP_EDGE_INDICATOR_WAYSHRINE or id == MINIMAP_EDGE_INDICATOR_ROUTE or id == MINIMAP_EDGE_INDICATOR_QUEST or distFromCenter >= (radius - margin) then
+                PositionEdgeIndicatorAtEdge(indicator, self.root, center, radius, dx, dy, markerSize)
             else
-                local length = math.sqrt((dx * dx) + (dy * dy))
-                if length > 0.0001 then
-                    local unitX = dx / length
-                    local unitY = dy / length
-                    local edgeRadius = radius - (markerSize * 0.34)
-
-                    indicator.control:SetDimensions(markerSize, markerSize)
-                    indicator.control:ClearAnchors()
-                    indicator.control:SetAnchor(CENTER, self.root, TOPLEFT, center + (unitX * edgeRadius), center + (unitY * edgeRadius))
-
-                    if indicator.control.SetTextureRotation then
-                        indicator.control:SetTextureRotation(GetRotationFromUp(unitX, unitY))
-                    end
-
-                    indicator.control:SetHidden(false)
-                else
-                    indicator.control:SetHidden(true)
-                end
+                indicator.control:SetHidden(true)
             end
         else
             indicator.control:SetHidden(true)
@@ -894,7 +918,7 @@ function MiniMap:UpdateRouteSegments(playerX, playerY, mapRotation, center, radi
             control:ClearAnchors()
             control:SetAnchor(CENTER, self.root, TOPLEFT, midX, midY)
             control:SetDimensions(math.max(length, 4), 4)
-            control:SetColor(0, 1, 1, 1)
+            control:SetColor(MINIMAP_ROUTE_COLOR[1], MINIMAP_ROUTE_COLOR[2], MINIMAP_ROUTE_COLOR[3], MINIMAP_ROUTE_COLOR[4])
             control:SetTextureRotation(angle)
             control:SetHidden(false)
         else
