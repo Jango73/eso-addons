@@ -800,30 +800,38 @@ function MiniMap:UpdateSpotMarkers(playerX, playerY, mapRotation, center, radius
         self.spotMarkersInitialized = true
     end
 
+    local zoneSpots = SpotDatabase:GetSpotsByMap(self.currentMapName)
+    if not zoneSpots then
+        for _, cat in ipairs(RESOURCE_CATEGORIES) do
+            local markers = self.spotMarkers[cat.key]
+            for i = 1, #markers do
+                markers[i]:SetHidden(true)
+            end
+        end
+        return
+    end
+
     for _, cat in ipairs(RESOURCE_CATEGORIES) do
         local markers = self.spotMarkers[cat.key]
-        local spots = SpotDatabase:GetSpots(cat.key)
+        local spots = zoneSpots[cat.key] or {}
         local markerIndex = 1
-        local currentMap = self.currentMapName
 
         for _, spot in ipairs(spots) do
-            if spot.map == currentMap then
-                local dx = (spot.x - playerX) * self.mapSize
-                local dy = (spot.y - playerY) * self.mapSize
-                dx, dy = RotateVector(dx, dy, mapRotation)
+            local dx = (spot.x - playerX) * self.mapSize
+            local dy = (spot.y - playerY) * self.mapSize
+            dx, dy = RotateVector(dx, dy, mapRotation)
 
-                local localX = center + dx
-                local localY = center + dy
-                local distFromCenter = math.sqrt((localX - center) ^ 2 + (localY - center) ^ 2)
+            local localX = center + dx
+            local localY = center + dy
+            local distFromCenter = math.sqrt((localX - center) ^ 2 + (localY - center) ^ 2)
 
-                if distFromCenter < (radius - margin) and markerIndex <= #markers then
-                    local marker = markers[markerIndex]
-                    marker:ClearAnchors()
-                    marker:SetAnchor(CENTER, self.root, TOPLEFT, localX, localY)
-                    marker:SetDimensions(self.spotMarkerSize, self.spotMarkerSize)
-                    marker:SetHidden(false)
-                    markerIndex = markerIndex + 1
-                end
+            if distFromCenter < (radius - margin) and markerIndex <= #markers then
+                local marker = markers[markerIndex]
+                marker:ClearAnchors()
+                marker:SetAnchor(CENTER, self.root, TOPLEFT, localX, localY)
+                marker:SetDimensions(self.spotMarkerSize, self.spotMarkerSize)
+                marker:SetHidden(false)
+                markerIndex = markerIndex + 1
             end
         end
 

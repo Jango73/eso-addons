@@ -108,12 +108,15 @@ function RouteManager:CalculateRoute(playerX, playerY, mapName)
     end
 
     local allSpots = {}
-    for cat, _ in pairs(self._selectedCategories) do
-        if _ and type(cat) == "string" then
-            local spots = SpotDatabase:GetSpots(cat)
-            for _, spot in ipairs(spots) do
-                if spot.map == mapName then
-                    table.insert(allSpots, spot)
+    local zoneSpots = SpotDatabase:GetSpotsByMap(mapName)
+    if zoneSpots then
+        for cat, _ in pairs(self._selectedCategories) do
+            if _ and type(cat) == "string" then
+                local spots = zoneSpots[cat]
+                if spots then
+                    for _, spot in ipairs(spots) do
+                        table.insert(allSpots, spot)
+                    end
                 end
             end
         end
@@ -135,7 +138,7 @@ function RouteManager:RecalculateIfNeeded(playerX, playerY, mapName)
     for cat, _ in pairs(self._selectedCategories) do
         if _ then
             local oldCount = self._lastCategoryCounts and self._lastCategoryCounts[cat] or 0
-            local newCount = SpotDatabase:GetSpotCount(cat)
+            local newCount = SpotDatabase:GetSpotCount(cat, mapName)
             if oldCount ~= newCount then
                 categoriesChanged = true
             end
