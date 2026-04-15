@@ -1,4 +1,12 @@
 
+-- ==============================================================================
+-- NOTES
+-- ==============================================================================
+-- 2026-04-15: SetTextureRotation bug at ±90° with edge_indicator_triangle.dds
+-- Cause: DDS with mipmaps caused wrong LOD selection in game engine
+-- Fix: recreate DDS texture WITHOUT mipmaps (ImageMagick: -define dds:mipmaps=0)
+-- ==============================================================================
+
 local ADDON_NAME = "MiniMap"
 local SpotMarker_ = "SpotMarker"
 local ROUTE_SEGMENT_MAX = 200
