@@ -288,6 +288,13 @@ function MiniMap:CreateControls()
             end)(cat.key),
         })
     end
+
+    self:RegisterEdgeIndicator("wayshrine", {
+        color = { 0.5, 0.8, 1, 1 },
+        provider = function()
+            return self:GetNearestWayshrinePosition()
+        end,
+    })
 end
 
 function MiniMap:ApplyLayout()
@@ -648,6 +655,36 @@ function MiniMap:GetActiveQuestTargetPosition()
     return nil
 end
 
+function MiniMap:GetNearestWayshrinePosition()
+    local px, py = self.playerMapX, self.playerMapY
+    if not px or not py then
+        return nil
+    end
+
+    local numNodes = GetNumFastTravelNodes()
+    if not numNodes or numNodes == 0 then
+        return nil
+    end
+
+    local nearestDist = math.huge
+    local nearestX, nearestY
+
+    for i = 1, numNodes do
+        local icon, name, x, y, poiType, isAvailable = GetFastTravelNodeInfo(i)
+        if x and y and isAvailable then
+            local dx = x - px
+            local dy = y - py
+            local dist = dx * dx + dy * dy
+            if dist < nearestDist then
+                nearestDist = dist
+                nearestX, nearestY = x, y
+            end
+        end
+    end
+
+    return nearestX, nearestY
+end
+
 function MiniMap:GetNearestResourceSpot(category)
     if not self.saved.showResourceIndicators then
         return nil
@@ -688,7 +725,27 @@ function MiniMap:UpdateEdgeIndicators(playerX, playerY, mapRotation)
             local localY = center + dy
             local distFromCenter = math.sqrt((localX - center) ^ 2 + (localY - center) ^ 2)
 
-            if distFromCenter < (radius - margin) then
+            local isWayshrine = (id == "wayshrine")
+            if isWayshrine then
+                local length = math.sqrt((dx * dx) + (dy * dy))
+                if length > 0.0001 then
+                    local unitX = dx / length
+                    local unitY = dy / length
+                    local edgeRadius = radius - (markerSize * 0.34)
+
+                    indicator.control:SetDimensions(markerSize, markerSize)
+                    indicator.control:ClearAnchors()
+                    indicator.control:SetAnchor(CENTER, self.root, TOPLEFT, center + (unitX * edgeRadius), center + (unitY * edgeRadius))
+
+                    if indicator.control.SetTextureRotation then
+                        indicator.control:SetTextureRotation(GetRotationFromUp(unitX, unitY))
+                    end
+
+                    indicator.control:SetHidden(false)
+                else
+                    indicator.control:SetHidden(true)
+                end
+            elseif distFromCenter < (radius - margin) then
                 indicator.control:SetHidden(true)
             else
                 local length = math.sqrt((dx * dx) + (dy * dy))
