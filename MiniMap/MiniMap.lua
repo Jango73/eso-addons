@@ -12,6 +12,7 @@ local MiniMap = {
     currentMapName = nil,
     nextMapRefreshMs = 0,
     nextQuestBreadcrumbRefreshMs = 0,
+    isCityMap = false,
 }
 
 local function Clamp(value, minValue, maxValue)
@@ -295,7 +296,8 @@ function MiniMap:ApplyLayout()
     local corner = CORNERS[self.saved.corner] or CORNERS.topright
 
     self.size = Clamp(size, 96, 480)
-    self.mapSize = self.size * self.saved.zoom
+    local effectiveZoom = self.isCityMap and MINIMAP_CITY_ZOOM or self.saved.zoom
+    self.mapSize = self.size * effectiveZoom
 
     self.root:ClearAnchors()
     self.root:SetAnchor(corner.anchor, GuiRoot, corner.relative, corner.x, corner.y)
@@ -877,7 +879,10 @@ function MiniMap:RefreshMap(force)
         return true
     end
 
-    self.nextMapRefreshMs = now + 1000
+    self.nextMapRefreshMs = now + MINIMAP_REFRESH_MS
+
+    local mapType = GetMapType and GetMapType() or MAPTYPE_ZONE
+    self.isCityMap = (mapType == MAPTYPE_SUBZONE)
 
     local mapName = GetMapName and GetMapName() or ""
     local numHorizontalTiles, numVerticalTiles = 0, 0
@@ -891,11 +896,13 @@ function MiniMap:RefreshMap(force)
         return false
     end
 
+    local previousMapName = self.currentMapName
     if force or mapName ~= self.currentMapName or numHorizontalTiles ~= self.numHorizontalTiles or numVerticalTiles ~= self.numVerticalTiles then
         self.currentMapName = mapName
         self.numHorizontalTiles = numHorizontalTiles
         self.numVerticalTiles = numVerticalTiles
         self:LayoutTiles()
+        self:ApplyLayout()
     end
 
     self.root:SetHidden(self.saved.hidden)
@@ -948,7 +955,7 @@ function MiniMap:UpdatePlayer()
         if self.saved.orientation == "player" then
             self.player:SetTextureRotation(0)
         else
-            self.player:SetTextureRotation(heading or 0)
+            self.player:SetTextureRotation(GetPlayerCameraHeading() or 0)
         end
     end
 end
