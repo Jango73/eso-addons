@@ -1468,9 +1468,9 @@ function MiniMap:Initialize()
     ForEachCategory(function(cat)
         SPOT_DEFAULTS[cat.key] = {}
     end)
+
     self.spots = ZO_SavedVars:NewAccountWide("MiniMapSpots", 1, nil, SPOT_DEFAULTS)
     SpotDatabase:Init(self.spots)
-    local count = SpotDatabase:GetSpotCount()
 
     self.npcs = ZO_SavedVars:NewAccountWide("MiniMapNPCs", 1, nil, {})
     NPCDatabase:Init(self.npcs)
