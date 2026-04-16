@@ -20,6 +20,7 @@ local MiniMap = {
     nextMapRefreshMs = 0,
     nextQuestBreadcrumbRefreshMs = 0,
     isCityMap = false,
+    foundNpc = nil,
 }
 
 local function Clamp(value, minValue, maxValue)
@@ -49,6 +50,25 @@ local function Echo(message)
     if CHAT_SYSTEM then
         CHAT_SYSTEM:AddMessage(message)
     end
+end
+
+local function ParseArgument(arg)
+    if not arg or arg == "" then return nil, nil end
+    local command, rest = zo_strmatch(arg, "^(%S*)%s*(.*)$")
+    command = zo_strlower(command or "")
+    
+    if rest and rest ~= "" then
+        if rest:sub(1, 1) == '"' then
+            local quoted = rest:match('^"(.-)"')
+            if quoted then
+                return command, quoted
+            end
+        end
+        local firstWord = zo_strmatch(rest, "^(%S*)")
+        local after = rest:match("^%S*%s+(.+)$")
+        return firstWord, after
+    end
+    return command, nil
 end
 
 local function GetLanguage()
@@ -112,6 +132,10 @@ local function PrintSpotDeleted(count)
     ZO_AlertNoSuppression(UI_ALERT_CATEGORY_ALERT, nil, string.format("%d spot(s) deleted", count))
 end
 
+local function PrintNpcAdded(npcName)
+    ZO_AlertNoSuppression(UI_ALERT_CATEGORY_ALERT, nil, "NPC added: " .. npcName)
+end
+
 local function IsValidCategory(cat)
     for _, c in ipairs(RESOURCE_CATEGORIES) do
         if c.key == cat then return true end
@@ -127,7 +151,8 @@ end
 local function AddSpotAtPlayer(category)
     local x, y = GetPlayerMapPosition()
     if x and y then
-        if SpotDatabase:AddSpot(x, y, category, MiniMap.currentMapName) then
+        local added, isNew = SpotDatabase:AddSpot(x, y, category, MiniMap.currentMapName)
+        if added and isNew then
             PrintSpotAdded(category)
             return true
         end
@@ -342,6 +367,13 @@ function MiniMap:CreateControls()
         color = MINIMAP_ROUTE_COLOR,
         provider = function()
             return self:GetNearestRoutePoint()
+        end,
+    })
+
+    self:RegisterEdgeIndicator(MINIMAP_EDGE_INDICATOR_NPC, {
+        color = MINIMAP_NPC_FIND_COLOR,
+        provider = function()
+            return self:GetFoundNpcPosition()
         end,
     })
 end
@@ -821,6 +853,17 @@ function MiniMap:GetNearestRoutePoint()
     return nearestX, nearestY
 end
 
+function MiniMap:GetFoundNpcPosition()
+    if not self.foundNpc then return nil end
+    local npcData = NPCDatabase:GetNPCByName(self.foundNpc, self.currentMapName)
+    if not npcData then return nil end
+    return npcData.x, npcData.y
+end
+
+function MiniMap:ClearFoundNpc()
+    self.foundNpc = nil
+end
+
 local function PositionEdgeIndicatorAtEdge(indicator, root, center, radius, dx, dy, markerSize)
     local length = math.sqrt((dx * dx) + (dy * dy))
     if length <= 0.0001 then
@@ -1137,6 +1180,10 @@ function MiniMap:ShowHelp()
     Echo("/minimap settings")
     Echo("/minimap add <category>")
     Echo("/minimap spots")
+    Echo("/minimap find <name>")
+    Echo("/minimap npc search <name>")
+    Echo("/minimap npc list")
+    Echo("/minimap npc clear")
     Echo("/minimap clear <category>|all")
     Echo("/minimap log clear")
     Echo("/minimap clean")
@@ -1149,9 +1196,12 @@ end
 local pendingClearConfirm = nil
 
 function MiniMap:HandleSlashCommand(arguments)
-    local command, value = zo_strmatch(arguments or "", "^(%S*)%s*(.-)$")
+    local command, value = zo_strmatch(arguments or "", "^(%S*)%s*(.*)$")
     command = zo_strlower(command or "")
-    value = zo_strlower(value or "")
+    
+    if command ~= "clear" and command ~= "npc" then
+        pendingClearConfirm = nil
+    end
 
     if command == "corner" or command == "position" then
         local corner = NormalizeCorner(value)
@@ -1304,6 +1354,95 @@ function MiniMap:HandleSlashCommand(arguments)
         else
             Print("No route active")
         end
+    elseif command == "find" then
+        local npcName = nil
+        if value and value ~= "" then
+            if value:sub(1, 1) == '"' then
+                npcName = value:match('^"(.-)"')
+            else
+                npcName = zo_strmatch(value, "^(%S+)")
+            end
+        end
+        if not npcName or npcName == "" then
+            self:ClearFoundNpc()
+            Print("NPC target cleared")
+            return
+        end
+        local npcData = NPCDatabase:GetNPCByName(npcName, self.currentMapName)
+        if npcData then
+            self.foundNpc = npcName
+            Print(string.format("Tracking: %s (%.4f, %.4f)", npcName, npcData.x, npcData.y))
+        else
+            self:ClearFoundNpc()
+            Print("NPC not found in current map: " .. npcName)
+        end
+    elseif command == "npc" then
+        local subCmd, npcQuery = zo_strmatch(value or "", "^(%S+)%s*(.*)$")
+        subCmd = zo_strlower(subCmd or "")
+        
+        if subCmd == "search" or subCmd == "find" then
+            if npcQuery and npcQuery ~= "" then
+                if npcQuery:sub(1, 1) == '"' then
+                    npcQuery = npcQuery:match('^"(.-)"')
+                else
+                    npcQuery = zo_strmatch(npcQuery, "^(%S+)")
+                end
+            end
+            if not npcQuery or npcQuery == "" then
+                Echo("Usage: /minimap npc search <name>")
+                return
+            end
+            local results = NPCDatabase:SearchNPCs(npcQuery)
+            if #results == 0 then
+                Print("No NPCs found matching: " .. npcQuery)
+            else
+                Print(string.format("Found %d NPC(s):", #results))
+                for i, npc in ipairs(results) do
+                    if i > 20 then
+                        Print("  ... and " .. (#results - 20) .. " more")
+                        break
+                    end
+                    Print(string.format("  [%s] %s (%.4f, %.4f)", npc.map, npc.name, npc.x, npc.y))
+                end
+            end
+        elseif subCmd == "list" or subCmd == "ls" then
+            local maps = NPCDatabase:GetAllMaps()
+            local mapCount = 0
+            local npcCount = 0
+            for mapName, count in pairs(maps) do
+                mapCount = mapCount + 1
+                npcCount = npcCount + count
+            end
+            Print(string.format("NPC database: %d maps, %d total NPCs", mapCount, npcCount))
+            if mapCount > 0 then
+                for mapName, count in pairs(maps) do
+                    Print(string.format("  %s: %d NPCs", mapName, count))
+                end
+            end
+        elseif subCmd == "clear" then
+            if pendingClearConfirm == "npc" then
+                NPCDatabase:Clear()
+                Print("All NPCs cleared")
+                pendingClearConfirm = nil
+            else
+                pendingClearConfirm = "npc"
+                Print("Confirm: type /minimap npc clear again to clear ALL NPCs")
+            end
+        elseif subCmd == "here" then
+            local npcs = NPCDatabase:GetNPCsByMap(self.currentMapName)
+            local count = 0
+            for _ in pairs(npcs) do count = count + 1 end
+            Print(string.format("%d NPCs in %s", count, self.currentMapName or "unknown"))
+            for name, data in pairs(npcs) do
+                Print(string.format("  %s (%.4f, %.4f)", name, data.x, data.y))
+            end
+        else
+            Echo("NPC commands:")
+            Echo("  /minimap npc search <name>")
+            Echo("  /minimap npc list")
+            Echo("  /minimap npc here")
+            Echo("  /minimap npc clear")
+        end
     else
         self:ShowHelp()
     end
@@ -1320,6 +1459,9 @@ function MiniMap:Initialize()
     SpotDatabase:Init(self.spots)
     local count = SpotDatabase:GetSpotCount()
 
+    self.npcs = ZO_SavedVars:NewAccountWide("MiniMapNPCs", 1, nil, {})
+    NPCDatabase:Init(self.npcs)
+
     self.routeManager = RouteManager
     self.routeManager:Init()
 
@@ -1333,6 +1475,9 @@ function MiniMap:Initialize()
     SLASH_COMMANDS["/minimap"] = function(arguments)
         self:HandleSlashCommand(arguments)
     end
+
+    local lastLootTargetType = nil
+    local lastLootTargetName = nil
 
     local updateCounter = 0
     local lastMapOpen = false
@@ -1375,8 +1520,18 @@ function MiniMap:Initialize()
         MiniMap:RefreshMap(true)
     end)
 
-    local lastLootTargetType = nil
-    local lastLootTargetName = nil
+    EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_CHATTER", EVENT_CHATTER_BEGIN, function()
+        local name = GetUnitName("interact")
+        local x, y, heading = GetMapPlayerPosition("player")
+        if name and name ~= "" and x and y then
+            if not NPCDatabase:Exists(name, MiniMap.currentMapName) then
+                NPCDatabase:AddNPC(name, x, y, MiniMap.currentMapName, {})
+                PrintNpcAdded(name)
+            else
+                NPCDatabase:UpdateNPCPosition(name, x, y, MiniMap.currentMapName)
+            end
+        end
+    end)
 
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_LOOT_UPDATED", EVENT_LOOT_UPDATED, function()
         local lootName, actionName, isOwned = GetLootTargetInfo()

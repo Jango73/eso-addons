@@ -46,12 +46,12 @@ function SpotDatabase:AddSpot(x, y, category, mapName)
     for i, s in ipairs(self._data[currentMap][category]) do
         if IsDuplicate(s, {x = x, y = y}) then
             self._data[currentMap][category][i] = { x = x, y = y, ts = GetTimeStamp() }
-            return true
+            return true, false
         end
     end
 
     table.insert(self._data[currentMap][category], { x = x, y = y, ts = GetTimeStamp() })
-    return true
+    return true, true
 end
 
 function SpotDatabase:CleanDuplicates()
