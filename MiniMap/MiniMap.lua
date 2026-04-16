@@ -1376,10 +1376,15 @@ function MiniMap:HandleSlashCommand(arguments)
             Print("NPC target cleared")
             return
         end
-        local npcData = NPCDatabase:GetNPCByName(npcName, self.currentMapName)
-        if npcData then
-            self.foundNpc = npcName
-            Print(string.format("Tracking: %s (%.4f, %.4f)", npcName, npcData.x, npcData.y))
+        local results = NPCDatabase:SearchNPCs(npcName, self.currentMapName)
+        if #results > 0 then
+            local match = results[1]
+            self.foundNpc = match.name
+            if #results > 1 then
+                Print(string.format("Tracking: %s (%.4f, %.4f) [%d matches]", match.name, match.x, match.y, #results))
+            else
+                Print(string.format("Tracking: %s (%.4f, %.4f)", match.name, match.x, match.y))
+            end
         else
             self:ClearFoundNpc()
             Print("NPC not found in current map: " .. npcName)
