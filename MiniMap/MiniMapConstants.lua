@@ -8,9 +8,9 @@ MINIMAP_SPOT_DUPLICATE_THRESHOLD = 0.0005
 MINIMAP_CITY_ZOOM = 4
 MINIMAP_REFRESH_MS = 500
 
-MINIMAP_TEXTURE_QUEST = "EsoUI/Art/Compass/quest_icon_assisted.dds"
-MINIMAP_TEXTURE_WAYSHRINE = "EsoUI/Art/Compass/quest_icon_assisted.dds"
-MINIMAP_TEXTURE_NPC = "EsoUI/Art/Compass/quest_icon_assisted.dds"
+MINIMAP_TEXTURE_QUEST = "/esoui/art/compass/quest_icon_assisted.dds"
+MINIMAP_TEXTURE_WAYSHRINE = "/esoui/art/icons/poi/poi_wayshrine_complete.dds"
+MINIMAP_TEXTURE_NPC = "/esoui/art/icons/poi/poi_mundus_complete.dds"
 
 MINIMAP_EDGE_INDICATOR_QUEST = "activeQuest"
 MINIMAP_EDGE_INDICATOR_WAYSHRINE = "wayshrine"
