@@ -545,7 +545,23 @@ function MiniMap:RegisterSettingsMenu()
                 self.saved.showToolbar = value
                 self:ApplyToolbarLayout()
             end,
-            default = DEFAULTS.showToolbar,
+default = DEFAULTS.showToolbar,
+        },
+        {
+            type = 'slider',
+            name = self:Text('refreshRate'),
+            tooltip = self:Text('refreshRateTooltip'),
+            getFunc = function()
+                return self.saved.refreshRate or DEFAULTS.refreshRate
+            end,
+            setFunc = function(value)
+                self.saved.refreshRate = value
+                self.refreshRateDirty = true
+            end,
+            min = 50,
+            max = 1000,
+            step = 100,
+            default = DEFAULTS.refreshRate,
             width = 'full',
         },
     }
@@ -1321,6 +1337,12 @@ function MiniMap:Initialize()
     local updateCounter = 0
     local lastMapOpen = false
     local function OnMinimapUpdate()
+        if MiniMap.refreshRateDirty then
+            MiniMap.refreshRateDirty = false
+            EVENT_MANAGER:UnregisterForUpdate(ADDON_NAME .. "Update")
+            EVENT_MANAGER:RegisterForUpdate(ADDON_NAME .. "Update", MiniMap.saved.refreshRate or 500, OnMinimapUpdate)
+        end
+        
         MiniMap:UpdatePlayer()
         
         local sceneShown = false
@@ -1347,7 +1369,7 @@ function MiniMap:Initialize()
         end
     end
 
-    EVENT_MANAGER:RegisterForUpdate(ADDON_NAME .. "Update", 150, OnMinimapUpdate)
+    EVENT_MANAGER:RegisterForUpdate(ADDON_NAME .. "Update", self.saved.refreshRate or 500, OnMinimapUpdate)
 
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_ZONE_CHANGED", EVENT_ZONE_CHANGED, function()
         MiniMap:RefreshMap(true)

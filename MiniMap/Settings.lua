@@ -1,14 +1,15 @@
 
 DEFAULTS = {
     corner = 'bottomright',
-    sizePercent = 22,
     orientation = 'north',
+    sizePercent = 22,
     zoom = 6,
     opacity = 100,
+    refreshRate = 50,
     debug = false,
     hidden = false,
     showResourceIndicators = true,
-    autoSaveSpots = true,
+    autoSaveSpots = false,
     showToolbar = false,
 }
 
@@ -66,6 +67,8 @@ STRINGS = {
         autoSaveSpotsTooltip = 'Automatically save resource spots when loot is collected.',
         showToolbarName = 'Show toolbar',
         showToolbarTooltip = 'Show toolbar with buttons to manually add resource spots and delete spots.',
+        refreshRateName = 'Refresh rate',
+        refreshRateTooltip = 'How often the minimap updates (in ms).',
     },
     fr = {
         helpCorner = '/minimap corner tl|tr|bl|br|left|right|top|bottom',
@@ -109,6 +112,8 @@ STRINGS = {
         autoSaveSpotsTooltip = 'Sauvegarder automatiquement les spots de ressources quand le butin est ramasse.',
         showToolbarName = 'Afficher la barre d\'outils',
         showToolbarTooltip = 'Afficher la barre d\'outils avec des boutons pour ajouter des spots de ressources manuellement et supprimer des spots.',
+        refreshRateName = 'Taux de rafraichissement',
+        refreshRateTooltip = 'Intervalle de rafraichissement de la minimap (en ms).',
     },
 }
 
