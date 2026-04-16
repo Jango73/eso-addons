@@ -101,12 +101,12 @@ function NPCDatabase:SearchNPCs(query, mapName)
     local results = {}
     query = zo_strlower(query)
     
-    local function processMap(map, name)
+    local function processMap(map, name, mapIter)
         if type(name) ~= "string" or type(map) ~= "table" then return end
         if string.find(zo_strlower(name), query, 1, true) then
             table.insert(results, {
                 name = name,
-                map = mapName,
+                map = mapIter,
                 x = map.x,
                 y = map.y,
                 ts = map.ts,
@@ -118,7 +118,7 @@ function NPCDatabase:SearchNPCs(query, mapName)
         local mapData = self._data[mapName]
         if mapData then
             for name, data in pairs(mapData) do
-                processMap(data, name)
+                processMap(data, name, mapName)
             end
         end
     else
@@ -126,7 +126,7 @@ function NPCDatabase:SearchNPCs(query, mapName)
             if type(mapNameIter) == "string" then
                 for name, data in pairs(mapData) do
                     if type(name) == "string" then
-                        processMap(data, name)
+                        processMap(data, name, mapNameIter)
                     end
                 end
             end

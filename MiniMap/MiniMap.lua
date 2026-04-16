@@ -1391,7 +1391,23 @@ function MiniMap:HandleSlashCommand(arguments)
             end
         else
             self:ClearFoundNpc()
-            Print("NPC not found in current map: " .. npcName)
+            local allResults = NPCDatabase:SearchNPCs(npcName)
+            if #allResults > 0 then
+                local zones = {}
+                for _, npc in ipairs(allResults) do
+                    if not zones[npc.map] then
+                        zones[npc.map] = 0
+                    end
+                    zones[npc.map] = zones[npc.map] + 1
+                end
+                local zoneList = {}
+                for zone, count in pairs(zones) do
+                    table.insert(zoneList, zone .. " (" .. count .. ")")
+                end
+                Print("NPC not found in current zone. Found in: " .. table.concat(zoneList, ", "))
+            else
+                Print("NPC not found: " .. npcName)
+            end
         end
     elseif command == "npc" then
         local subCmd, npcQuery = zo_strmatch(value or "", "^(%S+)%s*(.*)$")
