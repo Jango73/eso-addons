@@ -350,6 +350,7 @@ function MiniMap:CreateControls()
     self.routeMarker = nil
 
     self:RegisterEdgeIndicator(MINIMAP_EDGE_INDICATOR_QUEST, {
+        texture = MINIMAP_TEXTURE_QUEST,
         color = MINIMAP_QUEST_COLOR,
         provider = function()
             return self:GetActiveQuestTargetPosition()
@@ -357,6 +358,7 @@ function MiniMap:CreateControls()
     })
 
     self:RegisterEdgeIndicator(MINIMAP_EDGE_INDICATOR_WAYSHRINE, {
+        texture = MINIMAP_TEXTURE_WAYSHRINE,
         color = MINIMAP_WAYSHRINE_COLOR,
         provider = function()
             return self:GetNearestWayshrinePosition()
@@ -371,6 +373,7 @@ function MiniMap:CreateControls()
     })
 
     self:RegisterEdgeIndicator(MINIMAP_EDGE_INDICATOR_NPC, {
+        texture = MINIMAP_TEXTURE_NPC,
         color = MINIMAP_NPC_FIND_COLOR,
         provider = function()
             return self:GetFoundNpcPosition()
@@ -647,16 +650,16 @@ end
 
 function MiniMap:RegisterEdgeIndicator(id, options)
     local indicator = self.edgeIndicators[id]
+    local texture = options.texture or "MiniMap\\media\\edge_indicator_triangle.dds"
+    
     if not indicator then
         local control = WINDOW_MANAGER:CreateControl("MiniMapEdgeIndicator" .. id, self.root, CT_TEXTURE)
-        control:SetTexture(MINIMAP_EDGE_INDICATOR_TEXTURE)
+        control:SetTexture(texture)
         control:SetDrawLayer(DL_OVERLAY)
         control:SetHidden(true)
 
         local insideControl = WINDOW_MANAGER:CreateControl("MiniMapEdgeIndicatorInside" .. id, self.root, CT_BACKDROP)
         insideControl:SetDrawLayer(DL_OVERLAY)
-        insideControl:SetCenterColor(0, 0, 0, 1)
-        insideControl:SetEdgeColor(0, 0, 0, 1)
         insideControl:SetEdgeTexture(nil, 1, 1, 2)
         insideControl:SetHidden(true)
 
@@ -666,13 +669,18 @@ function MiniMap:RegisterEdgeIndicator(id, options)
         }
         self.edgeIndicators[id] = indicator
         self.edgeIndicatorOrder[#self.edgeIndicatorOrder + 1] = id
+    else
+        indicator.control:SetTexture(texture)
     end
 
     indicator.provider = options.provider
-    indicator.color = { options.color[1], options.color[2], options.color[3], options.color[4] }
-    indicator.control:SetColor(indicator.color[1], indicator.color[2], indicator.color[3], indicator.color[4] or 1)
-    indicator.insideControl:SetCenterColor(indicator.color[1], indicator.color[2], indicator.color[3], 1)
-    indicator.insideControl:SetEdgeColor(indicator.color[1] * 0.5, indicator.color[2] * 0.5, indicator.color[3] * 0.5, 1)
+    
+    if options.color then
+        indicator.color = { options.color[1], options.color[2], options.color[3], options.color[4] }
+        indicator.control:SetColor(indicator.color[1], indicator.color[2], indicator.color[3], indicator.color[4] or 1)
+        indicator.insideControl:SetCenterColor(indicator.color[1], indicator.color[2], indicator.color[3], 1)
+        indicator.insideControl:SetEdgeColor(indicator.color[1] * 0.5, indicator.color[2] * 0.5, indicator.color[3] * 0.5, 1)
+    end
 end
 
 function MiniMap:GetFocusedQuestIndex()
