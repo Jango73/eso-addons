@@ -1484,12 +1484,7 @@ end
 function MiniMap:Initialize()
     self.saved = ZO_SavedVars:NewAccountWide("MiniMapSavedVariables", 1, nil, DEFAULTS)
 
-    local SPOT_DEFAULTS = {}
-    ForEachCategory(function(cat)
-        SPOT_DEFAULTS[cat.key] = {}
-    end)
-
-    self.spots = ZO_SavedVars:NewAccountWide("MiniMapSpots", 1, nil, SPOT_DEFAULTS)
+    self.spots = ZO_SavedVars:NewAccountWide("MiniMapSpots", 1, nil, {})
     SpotDatabase:Init(self.spots)
 
     self.npcs = ZO_SavedVars:NewAccountWide("MiniMapNPCs", 1, nil, {})
