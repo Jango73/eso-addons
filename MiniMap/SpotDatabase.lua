@@ -10,7 +10,6 @@ RESOURCE_CATEGORIES = {
     { key = 'jewelry', color = { 0.9, 0.7, 0.2, 1 } },
     { key = 'ore', color = { 1, 0.5, 0, 1 } },
     { key = 'plant', color = { 0.2, 0.8, 0.2, 1 } },
-    { key = 'poison', color = { 0.5, 0.5, 0.5, 1 } },
     { key = 'rune', color = { 0.5, 0.2, 1, 1 } },
     { key = 'silk', color = { 0.7, 0.3, 0.3, 1 } },
     { key = 'thief_chest', color = { 0.3, 0.5, 0.8, 1 } },
@@ -280,7 +279,6 @@ function SpotDatabase:GetResourceCategory(lootType)
     elseif lootType == 37 then return 'wood'
     elseif lootType == 40 then return 'silk'
     -- elseif lootType == 0 then return 'jewelry'
-    -- elseif lootType == 0 then return 'poison'
     -- elseif lootType == 0 then return 'treasure'
     end
     return nil
