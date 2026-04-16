@@ -294,7 +294,7 @@ function MiniMap:CreateControls()
     })
 
     self:RegisterEdgeIndicator(MINIMAP_EDGE_INDICATOR_WAYSHRINE, {
-        color = { 0.5, 0.8, 1, 1 },
+        color = MINIMAP_WAYSHRINE_COLOR,
         provider = function()
             return self:GetNearestWayshrinePosition()
         end,
@@ -567,8 +567,16 @@ function MiniMap:RegisterEdgeIndicator(id, options)
         control:SetDrawLayer(DL_OVERLAY)
         control:SetHidden(true)
 
+        local insideControl = WINDOW_MANAGER:CreateControl("MiniMapEdgeIndicatorInside" .. id, self.root, CT_BACKDROP)
+        insideControl:SetDrawLayer(DL_OVERLAY)
+        insideControl:SetCenterColor(0, 0, 0, 1)
+        insideControl:SetEdgeColor(0, 0, 0, 1)
+        insideControl:SetEdgeTexture(nil, 1, 1, 2)
+        insideControl:SetHidden(true)
+
         indicator = {
             control = control,
+            insideControl = insideControl,
         }
         self.edgeIndicators[id] = indicator
         self.edgeIndicatorOrder[#self.edgeIndicatorOrder + 1] = id
@@ -576,8 +584,9 @@ function MiniMap:RegisterEdgeIndicator(id, options)
 
     indicator.provider = options.provider
     indicator.color = { options.color[1], options.color[2], options.color[3], options.color[4] }
-
     indicator.control:SetColor(indicator.color[1], indicator.color[2], indicator.color[3], indicator.color[4] or 1)
+    indicator.insideControl:SetCenterColor(indicator.color[1], indicator.color[2], indicator.color[3], 1)
+    indicator.insideControl:SetEdgeColor(indicator.color[1] * 0.5, indicator.color[2] * 0.5, indicator.color[3] * 0.5, 1)
 end
 
 function MiniMap:GetFocusedQuestIndex()
@@ -784,6 +793,7 @@ function MiniMap:UpdateEdgeIndicators(playerX, playerY, mapRotation)
     local radius = self.size / 2
     local center = radius
     local markerSize = Clamp(math.floor(self.size * MINIMAP_SIZE_FACTOR_EDGE_INDICATOR), 18, 32)
+    local insideMarkerSize = Clamp(math.floor(self.size * MINIMAP_SIZE_FACTOR_INSIDE_MARKER), 6, 12)
     local margin = self.spotMarkerSize
 
     self:UpdateSpotMarkers(playerX, playerY, mapRotation, center, radius, margin)
@@ -802,13 +812,19 @@ function MiniMap:UpdateEdgeIndicators(playerX, playerY, mapRotation)
             local localY = center + dy
             local distFromCenter = math.sqrt((localX - center) ^ 2 + (localY - center) ^ 2)
 
-            if id == MINIMAP_EDGE_INDICATOR_WAYSHRINE or id == MINIMAP_EDGE_INDICATOR_ROUTE or id == MINIMAP_EDGE_INDICATOR_QUEST or distFromCenter >= (radius - margin) then
+            if distFromCenter >= (radius - margin) then
+                indicator.insideControl:SetHidden(true)
                 PositionEdgeIndicatorAtEdge(indicator, self.root, center, radius, dx, dy, markerSize)
             else
                 indicator.control:SetHidden(true)
+                indicator.insideControl:ClearAnchors()
+                indicator.insideControl:SetAnchor(CENTER, self.root, TOPLEFT, localX, localY)
+                indicator.insideControl:SetDimensions(insideMarkerSize, insideMarkerSize)
+                indicator.insideControl:SetHidden(false)
             end
         else
             indicator.control:SetHidden(true)
+            indicator.insideControl:SetHidden(true)
         end
     end
 end
@@ -1045,7 +1061,7 @@ function MiniMap:UpdatePlayer()
 
     local mapRotation = 0
     if self.saved.orientation == "player" then
-        mapRotation = -(heading or GetPlayerCameraHeading and GetPlayerCameraHeading() or 0)
+        mapRotation = -(GetPlayerCameraHeading and GetPlayerCameraHeading() or 0)
     end
 
     if self.map.SetTransformRotationZ then
@@ -1056,7 +1072,7 @@ function MiniMap:UpdatePlayer()
 
     local elementRotation = 0
     if self.saved.orientation == "player" then
-        elementRotation = (heading or GetPlayerCameraHeading and GetPlayerCameraHeading() or 0)
+        elementRotation = (GetPlayerCameraHeading and GetPlayerCameraHeading() or 0)
     end
     self:UpdateEdgeIndicators(normalizedX, normalizedY, elementRotation)
 
