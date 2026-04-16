@@ -106,6 +106,45 @@ local function PrintSpotDeleted(count)
     ZO_AlertNoSuppression(UI_ALERT_CATEGORY_ALERT, nil, string.format("%d spot(s) deleted", count))
 end
 
+local function IsValidCategory(cat)
+    for _, c in ipairs(RESOURCE_CATEGORIES) do
+        if c.key == cat then return true end
+    end
+    return false
+end
+
+local function GetPlayerMapPosition()
+    local x, y, _ = GetMapPlayerPosition("player")
+    return x, y
+end
+
+local function AddSpotAtPlayer(category)
+    local x, y = GetPlayerMapPosition()
+    if x and y then
+        if SpotDatabase:AddSpot(x, y, category, MiniMap.currentMapName) then
+            PrintSpotAdded(category)
+            return true
+        end
+    end
+    return false
+end
+
+local function ForEachCategory(callback)
+    for _, cat in ipairs(RESOURCE_CATEGORIES) do
+        callback(cat)
+    end
+end
+
+local function WorldToLocal(targetX, targetY, playerX, playerY, mapSize, mapRotation, center)
+    local dx = (targetX - playerX) * mapSize
+    local dy = (targetY - playerY) * mapSize
+    dx, dy = RotateVector(dx, dy, mapRotation)
+    local localX = center + dx
+    local localY = center + dy
+    local distFromCenter = math.sqrt((localX - center) ^ 2 + (localY - center) ^ 2)
+    return localX, localY, distFromCenter, dx, dy
+end
+
 function MiniMap:CreateControls()
     local root = WINDOW_MANAGER:CreateTopLevelWindow("MiniMapWindow")
     root:SetDrawTier(DT_HIGH)
@@ -177,6 +216,18 @@ function MiniMap:CreateControls()
     local totalWidth = (#RESOURCE_CATEGORIES + 1) * (buttonSize + buttonSpacing) - buttonSpacing
     toolbar:SetDimensions(totalWidth, buttonSize + 12)
 
+    local function SetupButtonTooltip(btn, btnBg, hoverColor, normalColor, tooltipText)
+        btn:SetHandler("OnMouseEnter", function()
+            btnBg:SetCenterColor(hoverColor[1], hoverColor[2], hoverColor[3], hoverColor[4])
+            InitializeTooltip(InformationTooltip, btn, TOPLEFT, TOPLEFT, 0, 0)
+            SetTooltipText(InformationTooltip, tooltipText)
+        end)
+        btn:SetHandler("OnMouseExit", function()
+            btnBg:SetCenterColor(normalColor[1], normalColor[2], normalColor[3], normalColor[4])
+            ClearTooltip(InformationTooltip)
+        end)
+    end
+
     local function CreateToolButton(index, cat)
         local btn = WINDOW_MANAGER:CreateControl("MiniMapToolbarBtn" .. cat.key, toolbar, CT_BUTTON)
         btn:SetDimensions(buttonSize, buttonSize)
@@ -194,25 +245,13 @@ function MiniMap:CreateControls()
         btnLabel:SetText(string.upper(string.sub(cat.key, 1, 1)))
 
         btn:SetMouseOverTexture("EsoUI/Art/Buttons/left_up.dds")
-
-        local function AddSpotHandler()
-            local x, y = GetMapPlayerPosition("player")
-            if x and y then
-                if SpotDatabase:AddSpot(x, y, cat.key, MiniMap.currentMapName) then
-                    PrintSpotAdded(cat.key)
-                end
-            end
-        end
-        btn:SetHandler("OnClicked", AddSpotHandler)
-        btn:SetHandler("OnMouseEnter", function()
-            btnBg:SetCenterColor(cat.color[1] * 0.7, cat.color[2] * 0.7, cat.color[3] * 0.7, 0.9)
-            InitializeTooltip(InformationTooltip, btn, TOPLEFT, TOPLEFT, 0, 0)
-            SetTooltipText(InformationTooltip, "Add " .. cat.key .. " spot")
+        btn:SetHandler("OnClicked", function()
+            AddSpotAtPlayer(cat.key)
         end)
-        btn:SetHandler("OnMouseExit", function()
-            btnBg:SetCenterColor(cat.color[1], cat.color[2], cat.color[3], 0.7)
-            ClearTooltip(InformationTooltip)
-        end)
+        SetupButtonTooltip(btn, btnBg,
+            { cat.color[1] * 0.7, cat.color[2] * 0.7, cat.color[3] * 0.7, 0.9 },
+            { cat.color[1], cat.color[2], cat.color[3], 0.7 },
+            "Add " .. cat.key .. " spot")
         return btn
     end
 
@@ -233,28 +272,21 @@ function MiniMap:CreateControls()
         btnLabel:SetColor(1, 1, 1, 1)
         btnLabel:SetText("X")
 
-        local function DeleteSpotsHandler()
-            local x, y = GetMapPlayerPosition("player")
+        btn:SetHandler("OnClicked", function()
+            local x, y = GetPlayerMapPosition()
             if x and y then
-                local deleted, total = 0, 0
-                for _, cat in ipairs(RESOURCE_CATEGORIES) do
-                    local d, t = SpotDatabase:RemoveSpotsInRadius(x, y, MINIMAP_SPOT_DUPLICATE_THRESHOLD, cat.key, MiniMap.currentMapName)
+                local deleted = 0
+                ForEachCategory(function(cat)
+                    local d = SpotDatabase:RemoveSpotsInRadius(x, y, MINIMAP_SPOT_DUPLICATE_THRESHOLD, cat.key, MiniMap.currentMapName)
                     deleted = deleted + d
-                    total = total + t
-                end
+                end)
                 PrintSpotDeleted(deleted)
             end
-        end
-        btn:SetHandler("OnClicked", DeleteSpotsHandler)
-        btn:SetHandler("OnMouseEnter", function()
-            btnBg:SetCenterColor(1, 0.3, 0.3, 0.9)
-            InitializeTooltip(InformationTooltip, btn, TOPLEFT, TOPLEFT, 0, 0)
-            SetTooltipText(InformationTooltip, "Delete spots")
         end)
-        btn:SetHandler("OnMouseExit", function()
-            btnBg:SetCenterColor(0.8, 0.2, 0.2, 0.8)
-            ClearTooltip(InformationTooltip)
-        end)
+        SetupButtonTooltip(btn, btnBg,
+            { 1, 0.3, 0.3, 0.9 },
+            { 0.8, 0.2, 0.2, 0.8 },
+            "Delete spots")
         return btn
     end
 
@@ -533,9 +565,9 @@ function MiniMap:UpdateDebugLabel()
 
     local debug = self.questDebug or {}
     local spotInfo = ""
-    for _, cat in ipairs(RESOURCE_CATEGORIES) do
+    ForEachCategory(function(cat)
         spotInfo = spotInfo .. string.format("%s=%d ", cat.key, SpotDatabase:GetSpotCount(cat.key))
-    end
+    end)
 
     local routeInfo = ""
     if self.routeManager:IsRouteActive() then
@@ -804,13 +836,7 @@ function MiniMap:UpdateEdgeIndicators(playerX, playerY, mapRotation)
         local targetX, targetY = indicator.provider()
 
         if targetX and targetY then
-            local dx = (targetX - playerX) * self.mapSize
-            local dy = (targetY - playerY) * self.mapSize
-            dx, dy = RotateVector(dx, dy, mapRotation)
-
-            local localX = center + dx
-            local localY = center + dy
-            local distFromCenter = math.sqrt((localX - center) ^ 2 + (localY - center) ^ 2)
+            local localX, localY, distFromCenter, dx, dy = WorldToLocal(targetX, targetY, playerX, playerY, self.mapSize, mapRotation, center)
 
             if distFromCenter >= (radius - margin) then
                 indicator.insideControl:SetHidden(true)
@@ -832,7 +858,7 @@ end
 function MiniMap:UpdateSpotMarkers(playerX, playerY, mapRotation, center, radius, margin)
     if not self.spotMarkersInitialized then
         local MAX_MARKERS_PER_CAT = 10
-        for _, cat in ipairs(RESOURCE_CATEGORIES) do
+        ForEachCategory(function(cat)
             self.spotMarkers[cat.key] = {}
             for i = 1, MAX_MARKERS_PER_CAT do
                 local controlName = self.root:GetName() .. SpotMarker_ .. cat.key .. i
@@ -844,34 +870,28 @@ function MiniMap:UpdateSpotMarkers(playerX, playerY, mapRotation, center, radius
                 control:SetHidden(true)
                 self.spotMarkers[cat.key][i] = control
             end
-        end
+        end)
         self.spotMarkersInitialized = true
     end
 
     local zoneSpots = SpotDatabase:GetSpotsByMap(self.currentMapName)
     if not zoneSpots then
-        for _, cat in ipairs(RESOURCE_CATEGORIES) do
+        ForEachCategory(function(cat)
             local markers = self.spotMarkers[cat.key]
             for i = 1, #markers do
                 markers[i]:SetHidden(true)
             end
-        end
+        end)
         return
     end
 
-    for _, cat in ipairs(RESOURCE_CATEGORIES) do
+    ForEachCategory(function(cat)
         local markers = self.spotMarkers[cat.key]
         local spots = zoneSpots[cat.key] or {}
         local markerIndex = 1
 
         for _, spot in ipairs(spots) do
-            local dx = (spot.x - playerX) * self.mapSize
-            local dy = (spot.y - playerY) * self.mapSize
-            dx, dy = RotateVector(dx, dy, mapRotation)
-
-            local localX = center + dx
-            local localY = center + dy
-            local distFromCenter = math.sqrt((localX - center) ^ 2 + (localY - center) ^ 2)
+            local localX, localY, distFromCenter = WorldToLocal(spot.x, spot.y, playerX, playerY, self.mapSize, mapRotation, center)
 
             if distFromCenter < (radius - margin) and markerIndex <= #markers then
                 local marker = markers[markerIndex]
@@ -886,7 +906,7 @@ function MiniMap:UpdateSpotMarkers(playerX, playerY, mapRotation, center, radius
         for i = markerIndex, #markers do
             markers[i]:SetHidden(true)
         end
-    end
+    end)
 end
 
 function MiniMap:UpdateRouteSegments(playerX, playerY, mapRotation, center, radius)
@@ -1181,9 +1201,9 @@ function MiniMap:Initialize()
     self.saved = ZO_SavedVars:NewAccountWide("MiniMapSavedVariables", 1, nil, DEFAULTS)
 
     local SPOT_DEFAULTS = {}
-    for _, cat in ipairs(RESOURCE_CATEGORIES) do
+    ForEachCategory(function(cat)
         SPOT_DEFAULTS[cat.key] = {}
-    end
+    end)
     self.spots = ZO_SavedVars:NewAccountWide("MiniMapSpots", 1, nil, SPOT_DEFAULTS)
     SpotDatabase:Init(self.spots)
     local count = SpotDatabase:GetSpotCount()
@@ -1275,34 +1295,13 @@ function MiniMap:Initialize()
             return
         end
 
-        local x, y, _ = GetMapPlayerPosition("player")
-        if x and y then
-            if SpotDatabase:AddSpot(x, y, category, self.currentMapName) then
-                PrintSpotAdded(category)
-            end
-        end
+        AddSpotAtPlayer(category)
     end)
-
-    local function AddCurrentSpot(category)
-        local x, y, _ = GetMapPlayerPosition("player")
-        if x and y then
-            if SpotDatabase:AddSpot(x, y, category, self.currentMapName) then
-                PrintSpotAdded(category)
-            end
-        end
-    end
-
-    local function IsValidCategory(cat)
-        for _, c in ipairs(RESOURCE_CATEGORIES) do
-            if c.key == cat then return true end
-        end
-        return false
-    end
 
     SLASH_COMMANDS["/minimap_add"] = function(arguments)
         local category = zo_strlower(arguments or "")
         if IsValidCategory(category) then
-            AddCurrentSpot(category)
+            AddSpotAtPlayer(category)
         else
             local valid = ""
             for _, c in ipairs(RESOURCE_CATEGORIES) do
@@ -1315,10 +1314,9 @@ function MiniMap:Initialize()
     SLASH_COMMANDS["/minimap_spots"] = function(arguments)
         local total = SpotDatabase:GetSpotCount()
         Print("Total spots: " .. total)
-        for _, cat in ipairs(RESOURCE_CATEGORIES) do
-            local count = SpotDatabase:GetSpotCount(cat.key)
-            Print("  " .. cat.key .. ": " .. count)
-        end
+        ForEachCategory(function(cat)
+            Print("  " .. cat.key .. ": " .. SpotDatabase:GetSpotCount(cat.key))
+        end)
     end
 
     local pendingClearConfirm = nil
@@ -1372,13 +1370,6 @@ function MiniMap:Initialize()
     SLASH_COMMANDS["/minimap_clean"] = function()
         local removed = SpotDatabase:CleanDuplicates(true)
         Print(tostring(removed) .. " removed")
-    end
-
-    local function IsValidCategory(cat)
-        for _, c in ipairs(RESOURCE_CATEGORIES) do
-            if c.key == cat then return true end
-        end
-        return false
     end
 
     SLASH_COMMANDS["/minimap_route"] = function(arguments)
