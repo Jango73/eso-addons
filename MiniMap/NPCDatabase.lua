@@ -9,7 +9,11 @@ local NPC_REACTION_HOSTILE = 3
 local NPC_REACTION_NEUTRAL = 2
 
 function NPCDatabase:Init(savedVars)
-    self._data = savedVars
+    self._metadata = savedVars
+    if not self._metadata["data"] then
+        self._metadata["data"] = {}
+    end
+    self._data = self._metadata["data"]
 end
 
 function NPCDatabase:AddNPC(npcName, x, y, mapName, extraData)

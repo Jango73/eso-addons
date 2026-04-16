@@ -5,6 +5,10 @@
 -- 2026-04-15: SetTextureRotation bug at ±90° with edge_indicator_triangle.dds
 -- Cause: DDS with mipmaps caused wrong LOD selection in game engine
 -- Fix: recreate DDS texture WITHOUT mipmaps (ImageMagick: -define dds:mipmaps=0)
+-- 2026-04-16:
+-- ZO_SavedVars:NewAccountWide returns a special object that cannot be iterated
+-- directly (no pairs() or ipairs()). To store our tables, we must use a key of
+-- this object, e.g.: savedVars["data"] = {}. See SpotDatabase:Init for the pattern.
 -- ==============================================================================
 
 local ADDON_NAME = "MiniMap"
