@@ -1545,9 +1545,15 @@ function MiniMap:Initialize()
             if MiniMap.toolbar then MiniMap.toolbar:SetHidden(true) end
             lastMapOpen = true
         elseif not MiniMap.saved.hidden then
-            local toolbarVisible = MiniMap.saved.showToolbar and isPointerMode
+            local isHudShowing = true
+            if SCENE_MANAGER and SCENE_MANAGER.GetScene then
+                local hudScene = SCENE_MANAGER:GetScene("hud")
+                local huduiScene = SCENE_MANAGER:GetScene("hudui")
+                isHudShowing = (hudScene and hudScene.state and hudScene.state ~= "hidden") or (huduiScene and huduiScene.state and huduiScene.state ~= "hidden")
+            end
+            local toolbarVisible = MiniMap.saved.showToolbar and isPointerMode and isHudShowing
             if MiniMap.toolbar then MiniMap.toolbar:SetHidden(not toolbarVisible) end
-            MiniMap.root:SetHidden(toolbarVisible)
+            MiniMap.root:SetHidden(not isHudShowing)
             if lastMapOpen then
                 lastMapOpen = false
                 SetMapToPlayerLocation()
