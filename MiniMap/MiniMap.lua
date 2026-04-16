@@ -286,7 +286,7 @@ function MiniMap:CreateControls()
         SetupButtonTooltip(btn, btnBg,
             { cat.color[1] * 0.7, cat.color[2] * 0.7, cat.color[3] * 0.7, 0.9 },
             { cat.color[1], cat.color[2], cat.color[3], 0.7 },
-            "Add " .. cat.key .. " spot")
+            self:Text('toolbarAddSpot'):format(cat.key))
         return btn
     end
 
@@ -321,7 +321,7 @@ function MiniMap:CreateControls()
         SetupButtonTooltip(btn, btnBg,
             { 1, 0.3, 0.3, 0.9 },
             { 0.8, 0.2, 0.2, 0.8 },
-            "Delete spots")
+            self:Text('toolbarDeleteSpots'))
         return btn
     end
 

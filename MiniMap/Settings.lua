@@ -72,6 +72,8 @@ STRINGS = {
         showToolbarTooltip = 'Show toolbar with buttons to manually add resource spots and delete spots.',
         refreshRateName = 'Refresh rate',
         refreshRateTooltip = 'How often the minimap updates (in ms).',
+        toolbarAddSpot = 'Add %s spot',
+        toolbarDeleteSpots = 'Delete spots',
     },
     fr = {
         helpCorner = '/minimap corner tl|tr|bl|br|left|right|top|bottom',
@@ -119,6 +121,8 @@ STRINGS = {
         showToolbarTooltip = 'Afficher la barre d\'outils avec des boutons pour ajouter des spots de ressources manuellement et supprimer des spots.',
         refreshRateName = 'Taux de rafraichissement',
         refreshRateTooltip = 'Intervalle de rafraichissement de la minimap (en ms).',
+        toolbarAddSpot = 'Ajouter un point %s',
+        toolbarDeleteSpots = 'Supprimer les points',
     },
 }
 
