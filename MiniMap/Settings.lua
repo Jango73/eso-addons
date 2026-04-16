@@ -10,6 +10,7 @@ DEFAULTS = {
     hidden = false,
     showResourceIndicators = true,
     autoSaveSpots = false,
+    autoSaveNpcs = false,
     showToolbar = false,
 }
 
@@ -65,6 +66,8 @@ STRINGS = {
         shown = 'Shown.',
         autoSaveSpotsName = 'Auto save spots',
         autoSaveSpotsTooltip = 'Automatically save resource spots when loot is collected.',
+        autoSaveNpcsName = 'Auto save NPCs',
+        autoSaveNpcsTooltip = 'Automatically save NPCs when interacting with them.',
         showToolbarName = 'Show toolbar',
         showToolbarTooltip = 'Show toolbar with buttons to manually add resource spots and delete spots.',
         refreshRateName = 'Refresh rate',
@@ -110,6 +113,8 @@ STRINGS = {
         shown = 'Affichee.',
         autoSaveSpotsName = 'Sauvegarde auto des spots',
         autoSaveSpotsTooltip = 'Sauvegarder automatiquement les spots de ressources quand le butin est ramasse.',
+        autoSaveNpcsName = 'Sauvegarde auto des NPCs',
+        autoSaveNpcsTooltip = 'Sauvegarder automatiquement les NPCs quand on interagit avec eux.',
         showToolbarName = 'Afficher la barre d\'outils',
         showToolbarTooltip = 'Afficher la barre d\'outils avec des boutons pour ajouter des spots de ressources manuellement et supprimer des spots.',
         refreshRateName = 'Taux de rafraichissement',

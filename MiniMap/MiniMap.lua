@@ -478,6 +478,22 @@ function MiniMap:RegisterSettingsMenu()
     local optionsTable = {
         {
             type = 'dropdown',
+            name = self:Text('orientationName'),
+            tooltip = self:Text('orientationTooltip'),
+            choices = { self:Text('orientationNorth'), self:Text('orientationPlayer') },
+            choicesValues = { 'north', 'player' },
+            getFunc = function()
+                return self.saved.orientation
+            end,
+            setFunc = function(value)
+                self.saved.orientation = value
+                self:UpdatePlayer()
+            end,
+            default = DEFAULTS.orientation,
+            width = 'full',
+        },
+        {
+            type = 'dropdown',
             name = self:Text('positionName'),
             tooltip = self:Text('positionTooltip'),
             choices = {
@@ -528,22 +544,6 @@ function MiniMap:RegisterSettingsMenu()
             width = 'full',
         },
         {
-            type = 'dropdown',
-            name = self:Text('orientationName'),
-            tooltip = self:Text('orientationTooltip'),
-            choices = { self:Text('orientationNorth'), self:Text('orientationPlayer') },
-            choicesValues = { 'north', 'player' },
-            getFunc = function()
-                return self.saved.orientation
-            end,
-            setFunc = function(value)
-                self.saved.orientation = value
-                self:UpdatePlayer()
-            end,
-            default = DEFAULTS.orientation,
-            width = 'full',
-        },
-        {
             type = 'slider',
             name = self:Text('opacityName'),
             tooltip = self:Text('opacityTooltip'),
@@ -561,6 +561,23 @@ function MiniMap:RegisterSettingsMenu()
             width = 'full',
         },
         {
+            type = 'slider',
+            name = self:Text('refreshRateName'),
+            tooltip = self:Text('refreshRateTooltip'),
+            getFunc = function()
+                return self.saved.refreshRate or DEFAULTS.refreshRate
+            end,
+            setFunc = function(value)
+                self.saved.refreshRate = value
+                self.refreshRateDirty = true
+            end,
+            min = 50,
+            max = 1000,
+            step = 100,
+            default = DEFAULTS.refreshRate,
+            width = 'full',
+        },
+        {
             type = 'checkbox',
             name = self:Text('autoSaveSpotsName'),
             tooltip = self:Text('autoSaveSpotsTooltip'),
@@ -575,6 +592,19 @@ function MiniMap:RegisterSettingsMenu()
         },
         {
             type = 'checkbox',
+            name = self:Text('autoSaveNpcsName'),
+            tooltip = self:Text('autoSaveNpcsTooltip'),
+            getFunc = function()
+                return self.saved.autoSaveNpcs
+            end,
+            setFunc = function(value)
+                self.saved.autoSaveNpcs = value
+            end,
+            default = DEFAULTS.autoSaveNpcs,
+            width = 'full',
+        },
+        {
+            type = 'checkbox',
             name = self:Text('showToolbarName'),
             tooltip = self:Text('showToolbarTooltip'),
             getFunc = function()
@@ -584,23 +614,7 @@ function MiniMap:RegisterSettingsMenu()
                 self.saved.showToolbar = value
                 self:ApplyToolbarLayout()
             end,
-default = DEFAULTS.showToolbar,
-        },
-        {
-            type = 'slider',
-            name = self:Text('refreshRate'),
-            tooltip = self:Text('refreshRateTooltip'),
-            getFunc = function()
-                return self.saved.refreshRate or DEFAULTS.refreshRate
-            end,
-            setFunc = function(value)
-                self.saved.refreshRate = value
-                self.refreshRateDirty = true
-            end,
-            min = 50,
-            max = 1000,
-            step = 100,
-            default = DEFAULTS.refreshRate,
+            default = DEFAULTS.showToolbar,
             width = 'full',
         },
     }
@@ -1549,6 +1563,9 @@ function MiniMap:Initialize()
     end)
 
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_CHATTER", EVENT_CHATTER_BEGIN, function()
+        if not MiniMap.saved.autoSaveNpcs then
+            return
+        end
         local name = GetUnitName("interact")
         local x, y, heading = GetMapPlayerPosition("player")
         if name and name ~= "" and x and y then
