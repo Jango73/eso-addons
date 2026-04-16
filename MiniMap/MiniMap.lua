@@ -98,6 +98,14 @@ local function NormalizeCorner(value)
     return CORNERS[value] and value or nil
 end
 
+local function PrintSpotAdded(category)
+    ZO_AlertNoSuppression(UI_ALERT_CATEGORY_ALERT, nil, "Added a " .. category .. " spot")
+end
+
+local function PrintSpotDeleted(count)
+    ZO_AlertNoSuppression(UI_ALERT_CATEGORY_ALERT, nil, string.format("%d spot(s) deleted", count))
+end
+
 function MiniMap:CreateControls()
     local root = WINDOW_MANAGER:CreateTopLevelWindow("MiniMapWindow")
     root:SetDrawTier(DT_HIGH)
@@ -191,7 +199,7 @@ function MiniMap:CreateControls()
             local x, y = GetMapPlayerPosition("player")
             if x and y then
                 if SpotDatabase:AddSpot(x, y, cat.key, MiniMap.currentMapName) then
-                    ZO_AlertNoSuppression(UI_ALERT_CATEGORY_ALERT, nil, "Added a " .. cat.key .. " spot")
+                    PrintSpotAdded(cat.key)
                 end
             end
         end
@@ -234,7 +242,7 @@ function MiniMap:CreateControls()
                     deleted = deleted + d
                     total = total + t
                 end
-                ZO_AlertNoSuppression(UI_ALERT_CATEGORY_ALERT, nil, string.format("%d spot(s) deleted", deleted))
+                PrintSpotDeleted(deleted)
             end
         end
         btn:SetHandler("OnClicked", DeleteSpotsHandler)
@@ -1238,13 +1246,7 @@ function MiniMap:Initialize()
         lastLootTargetName = nil
     end)
 
-    local function PrintSpotAdded(category)
-        Print("Spot of category " .. category .. " added to database")
-    end
-
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_LOOT", EVENT_LOOT_RECEIVED, function(eventCode, characterName, itemName, quantity, lootType, lootedBySelf)
-        print("LOOT" .. " itemName=" .. itemName .. " lootType=" .. lootType)
-
         if not MiniMap.saved.autoSaveSpots then
             return
         end
