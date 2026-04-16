@@ -1112,19 +1112,20 @@ function MiniMap:ShowHelp()
     Print(self:Text("helpOpacity"))
     Print(self:Text("helpZoom"))
     Print(self:Text("helpVisibility"))
-    Print("/minimap debug")
-    Print("/minimapsettings")
-    Print("/minimap_add <category>")
-    Print("/minimap_spots")
-    Print("/minimap_clear <category>|all")
-    Print("/minimap_log")
-    Print("/minimap_log_clear")
-    Print("/minimap_clean")
-    Print("/minimap_pos")
-    Print("/minimap_route <category1 category2 ...>")
-    Print("/minimap_route_clear")
-    Print("/minimap_route_info")
+    Print("/minimap settings")
+    Print("/minimap add <category>")
+    Print("/minimap spots")
+    Print("/minimap clear <category>|all")
+    Print("/minimap log")
+    Print("/minimap clean")
+    Print("/minimap log clear")
+    Print("/minimap pos")
+    Print("/minimap route <category1 category2 ...>")
+    Print("/minimap route clear")
+    Print("/minimap route info")
 end
+
+local pendingClearConfirm = nil
 
 function MiniMap:HandleSlashCommand(arguments)
     local command, value = zo_strmatch(arguments or "", "^(%S*)%s*(.-)$")
@@ -1192,6 +1193,96 @@ function MiniMap:HandleSlashCommand(arguments)
         self.saved.debug = not self.saved.debug
         self:UpdateDebugLabel()
         Print("Debug: " .. tostring(self.saved.debug))
+    elseif command == "settings" then
+        LIB_FILTERS_2:OpenKeyboardMenu(ADDON_NAME)
+    elseif command == "add" then
+        if IsValidCategory(value) then
+            AddSpotAtPlayer(value)
+        else
+            local valid = ""
+            for _, c in ipairs(RESOURCE_CATEGORIES) do
+                valid = valid .. c.key .. "|"
+            end
+            Print("Usage: /minimap add " .. valid:sub(1, -2))
+        end
+    elseif command == "spots" then
+        local total = SpotDatabase:GetSpotCount()
+        Print("Total spots: " .. total)
+        ForEachCategory(function(cat)
+            Print("  " .. cat.key .. ": " .. SpotDatabase:GetSpotCount(cat.key))
+        end)
+    elseif command == "clear" then
+        if value == "all" then
+            if pendingClearConfirm == "all" then
+                SpotDatabase:Clear()
+                Print("All spots cleared")
+                pendingClearConfirm = nil
+            else
+                pendingClearConfirm = "all"
+                Print("Confirm: type /minimap clear all again to clear ALL spots")
+            end
+        elseif IsValidCategory(value) then
+            SpotDatabase:Clear(value)
+            Print(value .. " spots cleared")
+        elseif value == "cancel" then
+            pendingClearConfirm = nil
+            Print("Clear cancelled")
+        else
+            Print("Usage: /minimap clear <category>|all|cancel")
+        end
+    elseif command == "log" then
+        if value == "clear" then
+            MiniMap.debugLog = {}
+            Print("Debug log cleared")
+        elseif not MiniMap.debugLog or #MiniMap.debugLog == 0 then
+            Print("No debug log")
+            return
+        else
+            for i, msg in ipairs(MiniMap.debugLog) do
+                d("[" .. i .. "] " .. msg)
+            end
+        end
+    elseif command == "clean" then
+        local removed = SpotDatabase:CleanDuplicates(true)
+        Print(tostring(removed) .. " removed")
+    elseif command == "pos" then
+        local x, y = GetMapPlayerPosition("player")
+        if x and y then
+            Print("Position: " .. string.format("%.4f, %.4f", x, y))
+        else
+            Print("Position unknown")
+        end
+    elseif command == "route" then
+        local categories = {}
+        for cat in string.gmatch(value, "%S+") do
+            if IsValidCategory(cat) then
+                table.insert(categories, cat)
+            end
+        end
+
+        if #categories == 0 then
+            Print("Usage: /minimap route <category1 category2 ...>")
+            Print("Available: chest jewelry ore plant poison rune silk thief_chest water wood")
+            return
+        end
+
+        RouteManager:ClearCategories()
+        for _, cat in ipairs(categories) do
+            RouteManager:ToggleCategory(cat)
+        end
+
+        RouteManager:CalculateRoute(self.playerMapX, self.playerMapY, self.currentMapName)
+        Print(RouteManager:GetRouteInfo())
+    elseif command == "routeclear" then
+        RouteManager:ClearCategories()
+        RouteManager:ClearRoute()
+        Print("Route cleared")
+    elseif command == "routeinfo" then
+        if RouteManager:IsRouteActive() then
+            Print(RouteManager:GetRouteInfo())
+        else
+            Print("No route active")
+        end
     else
         self:ShowHelp()
     end
@@ -1297,117 +1388,6 @@ function MiniMap:Initialize()
 
         AddSpotAtPlayer(category)
     end)
-
-    SLASH_COMMANDS["/minimap_add"] = function(arguments)
-        local category = zo_strlower(arguments or "")
-        if IsValidCategory(category) then
-            AddSpotAtPlayer(category)
-        else
-            local valid = ""
-            for _, c in ipairs(RESOURCE_CATEGORIES) do
-                valid = valid .. c.key .. "|"
-            end
-            Print("Usage: /minimap_add " .. valid:sub(1, -2))
-        end
-    end
-
-    SLASH_COMMANDS["/minimap_spots"] = function(arguments)
-        local total = SpotDatabase:GetSpotCount()
-        Print("Total spots: " .. total)
-        ForEachCategory(function(cat)
-            Print("  " .. cat.key .. ": " .. SpotDatabase:GetSpotCount(cat.key))
-        end)
-    end
-
-    local pendingClearConfirm = nil
-    
-    SLASH_COMMANDS["/minimap_clear"] = function(arguments)
-        local category = zo_strlower(arguments or "")
-        if category == "all" then
-            if pendingClearConfirm then
-                SpotDatabase:Clear()
-                Print("All spots cleared")
-                pendingClearConfirm = nil
-            else
-                pendingClearConfirm = "all"
-                Print("Confirm: type /minimap_clear all again to clear ALL spots")
-            end
-        elseif IsValidCategory(category) then
-            SpotDatabase:Clear(category)
-            Print(category .. " spots cleared")
-        elseif category == "cancel" then
-            pendingClearConfirm = nil
-            Print("Clear cancelled")
-        else
-            Print("Usage: /minimap_clear <category>|all|cancel")
-        end
-    end
-
-    SLASH_COMMANDS["/minimap_log"] = function()
-        if not MiniMap.debugLog or #MiniMap.debugLog == 0 then
-            Print("No debug log")
-            return
-        end
-        for i, msg in ipairs(MiniMap.debugLog) do
-            d("[" .. i .. "] " .. msg)
-        end
-    end
-    
-    SLASH_COMMANDS["/minimap_log_clear"] = function()
-        MiniMap.debugLog = {}
-        Print("Debug log cleared")
-    end
-
-    SLASH_COMMANDS["/minimap_pos"] = function()
-        local x, y = GetMapPlayerPosition("player")
-        if x and y then
-            Print("Position: " .. string.format("%.4f, %.4f", x, y))
-        else
-            Print("Position unknown")
-        end
-    end
-
-    SLASH_COMMANDS["/minimap_clean"] = function()
-        local removed = SpotDatabase:CleanDuplicates(true)
-        Print(tostring(removed) .. " removed")
-    end
-
-    SLASH_COMMANDS["/minimap_route"] = function(arguments)
-        local categories = {}
-        for cat in string.gmatch(arguments or "", "%S+") do
-            if IsValidCategory(cat) then
-                table.insert(categories, cat)
-            end
-        end
-
-        if #categories == 0 then
-            Print("Usage: /minimap_route <category1 category2 ...>")
-            Print("Available: chest jewelry ore plant poison rune silk thief_chest water wood")
-            return
-        end
-
-        RouteManager:ClearCategories()
-        for _, cat in ipairs(categories) do
-            RouteManager:ToggleCategory(cat)
-        end
-
-        RouteManager:CalculateRoute(MiniMap.playerMapX, MiniMap.playerMapY, MiniMap.currentMapName)
-        Print(RouteManager:GetRouteInfo())
-    end
-
-    SLASH_COMMANDS["/minimap_route_clear"] = function()
-        RouteManager:ClearCategories()
-        RouteManager:ClearRoute()
-        Print("Route cleared")
-    end
-
-    SLASH_COMMANDS["/minimap_route_info"] = function()
-        if RouteManager:IsRouteActive() then
-            Print(RouteManager:GetRouteInfo())
-        else
-            Print("No route active")
-        end
-    end
 end
 
 local function OnAddOnLoaded(_, addonName)
