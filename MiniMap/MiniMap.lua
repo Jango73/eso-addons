@@ -45,6 +45,12 @@ local function Print(message)
     end
 end
 
+local function Echo(message)
+    if CHAT_SYSTEM then
+        CHAT_SYSTEM:AddMessage(message)
+    end
+end
+
 local function GetLanguage()
     local language = GetCVar and GetCVar("Language.2") or nil
     language = zo_strlower(language or "")
@@ -1106,23 +1112,22 @@ function MiniMap:UpdatePlayer()
 end
 
 function MiniMap:ShowHelp()
-    Print(self:Text("helpCorner"))
-    Print(self:Text("helpSize"))
-    Print(self:Text("helpOrientation"))
-    Print(self:Text("helpOpacity"))
-    Print(self:Text("helpZoom"))
-    Print(self:Text("helpVisibility"))
-    Print("/minimap settings")
-    Print("/minimap add <category>")
-    Print("/minimap spots")
-    Print("/minimap clear <category>|all")
-    Print("/minimap log")
-    Print("/minimap clean")
-    Print("/minimap log clear")
-    Print("/minimap pos")
-    Print("/minimap route <category1 category2 ...>")
-    Print("/minimap route clear")
-    Print("/minimap route info")
+    Echo(self:Text("helpCorner"))
+    Echo(self:Text("helpSize"))
+    Echo(self:Text("helpOrientation"))
+    Echo(self:Text("helpOpacity"))
+    Echo(self:Text("helpZoom"))
+    Echo(self:Text("helpVisibility"))
+    Echo("/minimap settings")
+    Echo("/minimap add <category>")
+    Echo("/minimap spots")
+    Echo("/minimap clear <category>|all")
+    Echo("/minimap log clear")
+    Echo("/minimap clean")
+    Echo("/minimap pos")
+    Echo("/minimap route <category1 category2 ...>")
+    Echo("/minimap route clear")
+    Echo("/minimap route info")
 end
 
 local pendingClearConfirm = nil
@@ -1203,7 +1208,7 @@ function MiniMap:HandleSlashCommand(arguments)
             for _, c in ipairs(RESOURCE_CATEGORIES) do
                 valid = valid .. c.key .. "|"
             end
-            Print("Usage: /minimap add " .. valid:sub(1, -2))
+            Echo("Usage: /minimap add " .. valid:sub(1, -2))
         end
     elseif command == "spots" then
         local total = SpotDatabase:GetSpotCount()
@@ -1228,7 +1233,7 @@ function MiniMap:HandleSlashCommand(arguments)
             pendingClearConfirm = nil
             Print("Clear cancelled")
         else
-            Print("Usage: /minimap clear <category>|all|cancel")
+            Echo("Usage: /minimap clear <category>|all|cancel")
         end
     elseif command == "log" then
         if value == "clear" then
@@ -1261,8 +1266,8 @@ function MiniMap:HandleSlashCommand(arguments)
         end
 
         if #categories == 0 then
-            Print("Usage: /minimap route <category1 category2 ...>")
-            Print("Available: chest jewelry ore plant poison rune silk thief_chest water wood")
+            Echo("Usage: /minimap route <category1 category2 ...>")
+            Echo("Available: chest jewelry ore plant poison rune silk thief_chest water wood")
             return
         end
 
