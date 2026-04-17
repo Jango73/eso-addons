@@ -12,7 +12,6 @@ MINIMAP_REFRESH_MS = 500
 MINIMAP_TEXTURE_QUEST = "/esoui/art/compass/quest_icon_assisted.dds"
 MINIMAP_TEXTURE_WAYSHRINE = "/esoui/art/icons/mapkey/mapkey_wayshrine.dds"
 MINIMAP_TEXTURE_NPC = "/esoui/art/icons/mapkey/mapkey_groupmember.dds"
-MINIMAP_TEXTURE_ROUTE = "MiniMap/media/edge_indicator_triangle.dds"
 
 MINIMAP_EDGE_INDICATOR_QUEST = "activeQuest"
 MINIMAP_EDGE_INDICATOR_WAYSHRINE = "wayshrine"
@@ -71,8 +70,9 @@ MARKER_DEFINITIONS = {
         hasInside = true,
     },
     [MINIMAP_EDGE_INDICATOR_ROUTE] = {
-        type = MINIMAP_MARKER_TYPE_TEXTURE,
-        texture = MINIMAP_TEXTURE_ROUTE,
+        edgeType = CT_TEXTURE,
+        edgeTexture = "MiniMap/media/edge_indicator_triangle.dds",
+        insideType = CT_BACKDROP,
         color = MINIMAP_ROUTE_COLOR,
         sizeFactor = MINIMAP_SIZE_FACTOR_EDGE_INDICATOR,
         insideSizeFactor = MINIMAP_SIZE_FACTOR_INSIDE_MARKER,

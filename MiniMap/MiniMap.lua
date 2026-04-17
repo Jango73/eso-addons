@@ -707,13 +707,13 @@ function MiniMap:CreateMarkerControls(id, marker)
     local baseName = "MiniMapMarker" .. id
 
     if def.hasEdge then
-        local controlType = def.type == MINIMAP_MARKER_TYPE_TEXTURE and CT_TEXTURE or CT_BACKDROP
-        marker.edgeControl = self:CreateMarkerControl(baseName, controlType, def.texture, def.color)
+        local edgeType = def.edgeType or (def.type == MINIMAP_MARKER_TYPE_TEXTURE and CT_TEXTURE or CT_BACKDROP)
+        marker.edgeControl = self:CreateMarkerControl(baseName, edgeType, def.edgeTexture or def.texture, def.color)
     end
 
     if def.hasInside then
-        local insideType = def.type == MINIMAP_MARKER_TYPE_TEXTURE and CT_TEXTURE or CT_BACKDROP
-        marker.insideControl = self:CreateMarkerControl(baseName .. "Inside", insideType, def.texture, def.color)
+        local insideType = def.insideType or (def.type == MINIMAP_MARKER_TYPE_TEXTURE and CT_TEXTURE or CT_BACKDROP)
+        marker.insideControl = self:CreateMarkerControl(baseName .. "Inside", insideType, def.insideTexture or def.texture, def.insideColor or def.color)
     end
 end
 
