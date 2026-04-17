@@ -18,9 +18,8 @@ local MiniMap = {
     tileCount = 0,
     currentMapName = nil,
     currentMapType = nil,
-    currentPlayerZoneName = nil,
-    currentPlayerSubzoneName = nil,
     nextMapRefreshMs = 0,
+    nextLocationProbeMs = 0,
     nextQuestBreadcrumbRefreshMs = 0,
     isCityMap = false,
     foundNpc = nil,
@@ -868,13 +867,10 @@ function MiniMap:RefreshMapIfPlayerLocationChanged()
         return
     end
 
-    local zoneName = GetPlayerActiveZoneName and GetPlayerActiveZoneName() or ""
-    local subzoneName = GetPlayerActiveSubzoneName and GetPlayerActiveSubzoneName() or ""
-
-    if zoneName ~= self.currentPlayerZoneName or subzoneName ~= self.currentPlayerSubzoneName then
-        self.currentPlayerZoneName = zoneName
-        self.currentPlayerSubzoneName = subzoneName
-        self:RefreshMapToPlayerLocation(true)
+    local now = GetFrameTimeMilliseconds and GetFrameTimeMilliseconds() or 0
+    if now >= (self.nextLocationProbeMs or 0) then
+        self.nextLocationProbeMs = now + MINIMAP_LOCATION_PROBE_MS
+        self:RefreshMapToPlayerLocation(false)
     end
 end
 

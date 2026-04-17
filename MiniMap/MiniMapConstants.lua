@@ -8,6 +8,7 @@ MINIMAP_SEGMENT_TEXTURE = "MiniMap/media/segment.dds"
 MINIMAP_SPOT_DUPLICATE_THRESHOLD = 0.0005
 MINIMAP_CITY_ZOOM = 4
 MINIMAP_REFRESH_MS = 500
+MINIMAP_LOCATION_PROBE_MS = 1000
 
 MINIMAP_TEXTURE_QUEST = "/esoui/art/compass/quest_icon_assisted.dds"
 MINIMAP_TEXTURE_WAYSHRINE = "/esoui/art/icons/mapkey/mapkey_wayshrine.dds"
