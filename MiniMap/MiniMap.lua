@@ -17,6 +17,9 @@ local MiniMap = {
     tiles = {},
     tileCount = 0,
     currentMapName = nil,
+    currentMapType = nil,
+    currentPlayerZoneName = nil,
+    currentPlayerSubzoneName = nil,
     nextMapRefreshMs = 0,
     nextQuestBreadcrumbRefreshMs = 0,
     isCityMap = false,
@@ -826,9 +829,14 @@ function MiniMap:RefreshMap(force)
         return false
     end
 
-    local previousMapName = self.currentMapName
-    if force or mapName ~= self.currentMapName or numHorizontalTiles ~= self.numHorizontalTiles or numVerticalTiles ~= self.numVerticalTiles then
+    if force
+        or mapName ~= self.currentMapName
+        or mapType ~= self.currentMapType
+        or numHorizontalTiles ~= self.numHorizontalTiles
+        or numVerticalTiles ~= self.numVerticalTiles
+    then
         self.currentMapName = mapName
+        self.currentMapType = mapType
         self.numHorizontalTiles = numHorizontalTiles
         self.numVerticalTiles = numVerticalTiles
         self:LayoutTiles()
@@ -837,6 +845,37 @@ function MiniMap:RefreshMap(force)
 
     self.root:SetHidden(self.saved.hidden)
     return true
+end
+
+function MiniMap:IsWorldMapShowing()
+    local scene = SCENE_MANAGER and SCENE_MANAGER.GetScene and SCENE_MANAGER:GetScene("worldMap")
+    return scene and scene:IsShowing()
+end
+
+function MiniMap:RefreshMapToPlayerLocation(force)
+    if SetMapToPlayerLocation and not self:IsWorldMapShowing() then
+        local result = SetMapToPlayerLocation()
+        if result == SET_MAP_RESULT_MAP_CHANGED and CALLBACK_MANAGER then
+            CALLBACK_MANAGER:FireCallbacks("OnWorldMapChanged")
+        end
+    end
+
+    return self:RefreshMap(force)
+end
+
+function MiniMap:RefreshMapIfPlayerLocationChanged()
+    if self:IsWorldMapShowing() then
+        return
+    end
+
+    local zoneName = GetPlayerActiveZoneName and GetPlayerActiveZoneName() or ""
+    local subzoneName = GetPlayerActiveSubzoneName and GetPlayerActiveSubzoneName() or ""
+
+    if zoneName ~= self.currentPlayerZoneName or subzoneName ~= self.currentPlayerSubzoneName then
+        self.currentPlayerZoneName = zoneName
+        self.currentPlayerSubzoneName = subzoneName
+        self:RefreshMapToPlayerLocation(true)
+    end
 end
 
 function MiniMap:UpdatePlayer()
@@ -1209,7 +1248,7 @@ function MiniMap:Initialize()
 
     self:CreateControls()
     self:ApplyLayout()
-    self:RefreshMap(true)
+    self:RefreshMapToPlayerLocation(true)
     self:RegisterSettingsMenu()
 
     SLASH_COMMANDS["/minimap"] = function(arguments)
@@ -1227,14 +1266,14 @@ function MiniMap:Initialize()
             EVENT_MANAGER:UnregisterForUpdate(ADDON_NAME .. "Update")
             EVENT_MANAGER:RegisterForUpdate(ADDON_NAME .. "Update", MiniMap.saved.refreshRate or 500, OnMinimapUpdate)
         end
-        
-        MiniMap:UpdatePlayer()
-        
-        local sceneShown = false
-        local scene = SCENE_MANAGER and SCENE_MANAGER.GetScene and SCENE_MANAGER:GetScene("worldMap")
-        if scene then
-            sceneShown = scene:IsShowing()
+
+        local sceneShown = MiniMap:IsWorldMapShowing()
+
+        if not sceneShown then
+            MiniMap:RefreshMapIfPlayerLocationChanged()
         end
+
+        MiniMap:UpdatePlayer()
         
         local isPointerMode = IsGameCameraUIModeActive and IsGameCameraUIModeActive()
         
@@ -1254,16 +1293,27 @@ function MiniMap:Initialize()
             MiniMap.root:SetHidden(not isHudShowing)
             if lastMapOpen then
                 lastMapOpen = false
-                SetMapToPlayerLocation()
-                MiniMap:RefreshMap(true)
+                MiniMap:RefreshMapToPlayerLocation(true)
             end
         end
     end
 
     EVENT_MANAGER:RegisterForUpdate(ADDON_NAME .. "Update", self.saved.refreshRate or 500, OnMinimapUpdate)
 
+    local function RefreshMapAfterLocationChange()
+        MiniMap:RefreshMapToPlayerLocation(true)
+        if zo_callLater then
+            zo_callLater(function()
+                MiniMap:RefreshMapToPlayerLocation(true)
+                MiniMap:UpdatePlayer()
+            end, 250)
+        end
+    end
+
+    EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_PLAYER_ACTIVATED", EVENT_PLAYER_ACTIVATED, RefreshMapAfterLocationChange)
+
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_ZONE_CHANGED", EVENT_ZONE_CHANGED, function()
-        MiniMap:RefreshMap(true)
+        RefreshMapAfterLocationChange()
     end)
 
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_CHATTER", EVENT_CHATTER_BEGIN, function()
