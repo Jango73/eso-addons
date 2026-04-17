@@ -9,8 +9,12 @@
 ## SavedVariables: MiniMapNPCs
 
 MiniMapConstants.lua
+MiniMapRenderUtils.lua
 SpotDatabase.lua
 NPCDatabase.lua
 Settings.lua
 RouteManager.lua
+SpotRenderer.lua
+RouteRenderer.lua
+IndicatorRenderer.lua
 MiniMap.lua
