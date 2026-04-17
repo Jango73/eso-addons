@@ -1,6 +1,7 @@
 
 MINIMAP_SIZE_FACTOR_PLAYER = 0.1
-MINIMAP_SIZE_FACTOR_SPOT_MARKER = 0.045
+MINIMAP_SIZE_FACTOR_SPOT_BACKDROP_MARKER = 0.05
+MINIMAP_SIZE_FACTOR_SPOT_TEXTURE_MARKER = 0.1
 MINIMAP_SIZE_FACTOR_EDGE_INDICATOR = 0.2
 MINIMAP_SIZE_FACTOR_INSIDE_MARKER = 0.04
 MINIMAP_SEGMENT_TEXTURE = "MiniMap\\media\\segment.dds"
@@ -9,8 +10,8 @@ MINIMAP_CITY_ZOOM = 4
 MINIMAP_REFRESH_MS = 500
 
 MINIMAP_TEXTURE_QUEST = "/esoui/art/compass/quest_icon_assisted.dds"
-MINIMAP_TEXTURE_WAYSHRINE = "/esoui/art/icons/poi/poi_wayshrine_complete.dds"
-MINIMAP_TEXTURE_NPC = "/esoui/art/icons/poi/poi_mundus_complete.dds"
+MINIMAP_TEXTURE_WAYSHRINE = "/esoui/art/icons/mapkey/mapkey_wayshrine.dds"
+MINIMAP_TEXTURE_NPC = "/esoui/art/icons/mapkey/mapkey_groupmember.dds"
 
 MINIMAP_EDGE_INDICATOR_QUEST = "activeQuest"
 MINIMAP_EDGE_INDICATOR_WAYSHRINE = "wayshrine"
@@ -21,3 +22,18 @@ MINIMAP_QUEST_COLOR = { 1, 1, 1, 1 }
 MINIMAP_WAYSHRINE_COLOR = { 0.5, 0.8, 1, 1 }
 MINIMAP_ROUTE_COLOR = { 0.25, 0.25, 0.25, 1 }
 MINIMAP_NPC_FIND_COLOR = { 1, 0.2, 0.2, 1 }
+
+MINIMAP_SPOT_TEXTURES = {
+    book = nil,
+    chest = nil,
+    jewelry = "/esoui/art/icons/mapkey/mapkey_jewelrycrafting.dds",
+    ore = "/esoui/art/icons/mapkey/mapkey_smithy.dds",
+    plant = "/esoui/art/icons/mapkey/mapkey_alchemist.dds",
+    rune = "/esoui/art/icons/mapkey/mapkey_enchanter.dds",
+    shard = "/esoui/art/icons/mapkey/mapkey_icboneshard.dds",
+    silk = "/esoui/art/icons/mapkey/mapkey_clothier.dds",
+    thief_chest = nil,
+    water = nil,
+    wood = "/esoui/art/icons/mapkey/mapkey_woodworker.dds",
+    npc = "/esoui/art/icons/mapkey/mapkey_groupmember.dds",
+}

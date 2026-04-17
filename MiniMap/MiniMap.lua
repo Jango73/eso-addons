@@ -405,7 +405,8 @@ function MiniMap:ApplyLayout()
     local playerSize = Clamp(math.floor(self.size * MINIMAP_SIZE_FACTOR_PLAYER), 18, 30)
     self.player:SetDimensions(playerSize, playerSize)
 
-    self.spotMarkerSize = Clamp(math.floor(self.size * MINIMAP_SIZE_FACTOR_SPOT_MARKER), 9, 15)
+    self.spotMarkerSize = Clamp(math.floor(self.size * MINIMAP_SIZE_FACTOR_SPOT_BACKDROP_MARKER), 9, 30)
+    self.spotTextureMarkerSize = Clamp(math.floor(self.size * MINIMAP_SIZE_FACTOR_SPOT_TEXTURE_MARKER), 18, 40)
 
     for _, indicator in pairs(self.edgeIndicators) do
         indicator.control:SetDimensions(playerSize, playerSize)
@@ -948,16 +949,24 @@ end
 
 function MiniMap:UpdateSpotMarkers(playerX, playerY, mapRotation, center, radius, margin)
     if not self.spotMarkersInitialized then
-        local MAX_MARKERS_PER_CAT = 10
+        local MAX_MARKERS_PER_CAT = 20
         ForEachCategory(function(cat)
             self.spotMarkers[cat.key] = {}
             for i = 1, MAX_MARKERS_PER_CAT do
                 local controlName = self.root:GetName() .. SpotMarker_ .. cat.key .. i
-                local control = WINDOW_MANAGER:CreateControl(controlName, self.root, CT_BACKDROP)
+                local control = nil
+                local texture = MINIMAP_SPOT_TEXTURES[cat.key]
+                if texture then
+                    control = WINDOW_MANAGER:CreateControl(controlName, self.root, CT_TEXTURE)
+                    control:SetTexture(texture)
+                    control:SetColor(1, 1, 1, 1)
+                else
+                    control = WINDOW_MANAGER:CreateControl(controlName, self.root, CT_BACKDROP)
+                    control:SetCenterColor(cat.color[1], cat.color[2], cat.color[3], 1)
+                    control:SetEdgeColor(0, 0, 0, 1)
+                    control:SetEdgeTexture(nil, 1, 1, 2)
+                end
                 control:SetDrawLayer(DL_OVERLAY)
-                control:SetCenterColor(cat.color[1], cat.color[2], cat.color[3], 1)
-                control:SetEdgeColor(0, 0, 0, 1)
-                control:SetEdgeTexture(nil, 1, 1, 2)
                 control:SetHidden(true)
                 self.spotMarkers[cat.key][i] = control
             end
@@ -980,15 +989,17 @@ function MiniMap:UpdateSpotMarkers(playerX, playerY, mapRotation, center, radius
         local markers = self.spotMarkers[cat.key]
         local spots = zoneSpots[cat.key] or {}
         local markerIndex = 1
+        local isTexture = MINIMAP_SPOT_TEXTURES[cat.key] ~= nil
 
         for _, spot in ipairs(spots) do
             local localX, localY, distFromCenter = WorldToLocal(spot.x, spot.y, playerX, playerY, self.mapSize, mapRotation, center)
 
             if distFromCenter < (radius - margin) and markerIndex <= #markers then
                 local marker = markers[markerIndex]
+                local markerSize = isTexture and self.spotTextureMarkerSize or self.spotMarkerSize
                 marker:ClearAnchors()
                 marker:SetAnchor(CENTER, self.root, TOPLEFT, localX, localY)
-                marker:SetDimensions(self.spotMarkerSize, self.spotMarkerSize)
+                marker:SetDimensions(markerSize, markerSize)
                 marker:SetHidden(false)
                 markerIndex = markerIndex + 1
             end
