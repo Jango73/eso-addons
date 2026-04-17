@@ -4,7 +4,7 @@ MINIMAP_SIZE_FACTOR_SPOT_BACKDROP_MARKER = 0.05
 MINIMAP_SIZE_FACTOR_SPOT_TEXTURE_MARKER = 0.1
 MINIMAP_SIZE_FACTOR_EDGE_INDICATOR = 0.2
 MINIMAP_SIZE_FACTOR_INSIDE_MARKER = 0.04
-MINIMAP_SEGMENT_TEXTURE = "MiniMap\\media\\segment.dds"
+MINIMAP_SEGMENT_TEXTURE = "MiniMap/media/segment.dds"
 MINIMAP_SPOT_DUPLICATE_THRESHOLD = 0.0005
 MINIMAP_CITY_ZOOM = 4
 MINIMAP_REFRESH_MS = 500
@@ -12,6 +12,7 @@ MINIMAP_REFRESH_MS = 500
 MINIMAP_TEXTURE_QUEST = "/esoui/art/compass/quest_icon_assisted.dds"
 MINIMAP_TEXTURE_WAYSHRINE = "/esoui/art/icons/mapkey/mapkey_wayshrine.dds"
 MINIMAP_TEXTURE_NPC = "/esoui/art/icons/mapkey/mapkey_groupmember.dds"
+MINIMAP_TEXTURE_ROUTE = "MiniMap/media/edge_indicator_triangle.dds"
 
 MINIMAP_EDGE_INDICATOR_QUEST = "activeQuest"
 MINIMAP_EDGE_INDICATOR_WAYSHRINE = "wayshrine"
@@ -70,7 +71,8 @@ MARKER_DEFINITIONS = {
         hasInside = true,
     },
     [MINIMAP_EDGE_INDICATOR_ROUTE] = {
-        type = MINIMAP_MARKER_TYPE_BACKDROP,
+        type = MINIMAP_MARKER_TYPE_TEXTURE,
+        texture = MINIMAP_TEXTURE_ROUTE,
         color = MINIMAP_ROUTE_COLOR,
         sizeFactor = MINIMAP_SIZE_FACTOR_EDGE_INDICATOR,
         insideSizeFactor = MINIMAP_SIZE_FACTOR_INSIDE_MARKER,
