@@ -695,6 +695,8 @@ function MiniMap:GetActiveQuestTargetPosition()
     return nil
 end
 
+local POI_TYPE_WAYSHRINE = 1
+
 function MiniMap:GetNearestWayshrinePosition()
     local px, py = self.playerMapX, self.playerMapY
     if not px or not py then
@@ -710,8 +712,8 @@ function MiniMap:GetNearestWayshrinePosition()
     local nearestX, nearestY
 
     for i = 1, numNodes do
-        local icon, name, x, y, poiType, isAvailable = GetFastTravelNodeInfo(i)
-        if x and y and isAvailable then
+        local known, name, x, y, icon, glowIcon, poiType, isShown, linkedLocked = GetFastTravelNodeInfo(i)
+        if x and y and known and poiType == POI_TYPE_WAYSHRINE then
             local dx = x - px
             local dy = y - py
             local dist = dx * dx + dy * dy
