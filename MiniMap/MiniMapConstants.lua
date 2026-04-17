@@ -37,3 +37,44 @@ MINIMAP_SPOT_TEXTURES = {
     wood = "/esoui/art/icons/mapkey/mapkey_woodworker.dds",
     npc = "/esoui/art/icons/mapkey/mapkey_groupmember.dds",
 }
+
+MINIMAP_MARKER_TYPE_TEXTURE = "texture"
+MINIMAP_MARKER_TYPE_BACKDROP = "backdrop"
+
+MARKER_DEFINITIONS = {
+    [MINIMAP_EDGE_INDICATOR_QUEST] = {
+        type = MINIMAP_MARKER_TYPE_TEXTURE,
+        texture = MINIMAP_TEXTURE_QUEST,
+        color = MINIMAP_QUEST_COLOR,
+        sizeFactor = MINIMAP_SIZE_FACTOR_EDGE_INDICATOR,
+        insideSizeFactor = MINIMAP_SIZE_FACTOR_INSIDE_MARKER,
+        hasEdge = true,
+        hasInside = true,
+    },
+    [MINIMAP_EDGE_INDICATOR_WAYSHRINE] = {
+        type = MINIMAP_MARKER_TYPE_TEXTURE,
+        texture = MINIMAP_TEXTURE_WAYSHRINE,
+        color = MINIMAP_WAYSHRINE_COLOR,
+        sizeFactor = MINIMAP_SIZE_FACTOR_EDGE_INDICATOR,
+        insideSizeFactor = MINIMAP_SIZE_FACTOR_INSIDE_MARKER,
+        hasEdge = true,
+        hasInside = true,
+    },
+    [MINIMAP_EDGE_INDICATOR_NPC] = {
+        type = MINIMAP_MARKER_TYPE_TEXTURE,
+        texture = MINIMAP_TEXTURE_NPC,
+        color = MINIMAP_NPC_FIND_COLOR,
+        sizeFactor = MINIMAP_SIZE_FACTOR_EDGE_INDICATOR,
+        insideSizeFactor = MINIMAP_SIZE_FACTOR_INSIDE_MARKER,
+        hasEdge = true,
+        hasInside = true,
+    },
+    [MINIMAP_EDGE_INDICATOR_ROUTE] = {
+        type = MINIMAP_MARKER_TYPE_BACKDROP,
+        color = MINIMAP_ROUTE_COLOR,
+        sizeFactor = MINIMAP_SIZE_FACTOR_EDGE_INDICATOR,
+        insideSizeFactor = MINIMAP_SIZE_FACTOR_INSIDE_MARKER,
+        hasEdge = true,
+        hasInside = true,
+    },
+}

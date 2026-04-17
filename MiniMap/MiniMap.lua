@@ -17,8 +17,7 @@ local ROUTE_SEGMENT_MAX = 200
 
 local MiniMap = {
     tiles = {},
-    edgeIndicators = {},
-    edgeIndicatorOrder = {},
+    markers = {},
     tileCount = 0,
     currentMapName = nil,
     nextMapRefreshMs = 0,
@@ -353,36 +352,47 @@ function MiniMap:CreateControls()
     self.routeSegmentsInitialized = false
     self.routeMarker = nil
 
-    self:RegisterEdgeIndicator(MINIMAP_EDGE_INDICATOR_QUEST, {
-        texture = MINIMAP_TEXTURE_QUEST,
-        color = MINIMAP_QUEST_COLOR,
-        provider = function()
-            return self:GetActiveQuestTargetPosition()
-        end,
-    })
+    self:InitializeMarkers()
+end
 
-    self:RegisterEdgeIndicator(MINIMAP_EDGE_INDICATOR_WAYSHRINE, {
-        texture = MINIMAP_TEXTURE_WAYSHRINE,
-        color = MINIMAP_WAYSHRINE_COLOR,
-        provider = function()
-            return self:GetNearestWayshrinePosition()
-        end,
-    })
+function MiniMap:InitializeMarkers()
+    self.markers = {}
 
-    self:RegisterEdgeIndicator(MINIMAP_EDGE_INDICATOR_ROUTE, {
-        color = MINIMAP_ROUTE_COLOR,
-        provider = function()
-            return self:GetNearestRoutePoint()
-        end,
-    })
+    local markerOrder = {
+        MINIMAP_EDGE_INDICATOR_ROUTE,
+        MINIMAP_EDGE_INDICATOR_QUEST,
+        MINIMAP_EDGE_INDICATOR_WAYSHRINE,
+        MINIMAP_EDGE_INDICATOR_NPC,
+    }
 
-    self:RegisterEdgeIndicator(MINIMAP_EDGE_INDICATOR_NPC, {
-        texture = MINIMAP_TEXTURE_NPC,
-        color = MINIMAP_NPC_FIND_COLOR,
-        provider = function()
-            return self:GetFoundNpcPosition()
-        end,
-    })
+    for _, id in ipairs(markerOrder) do
+        local def = MARKER_DEFINITIONS[id]
+        if def then
+            self.markers[id] = {
+                definition = def,
+                edgeControl = nil,
+                insideControl = nil,
+                color = def.color,
+                provider = nil,
+            }
+        end
+    end
+
+    self.markers[MINIMAP_EDGE_INDICATOR_QUEST].provider = function()
+        return self:GetActiveQuestTargetPosition()
+    end
+
+    self.markers[MINIMAP_EDGE_INDICATOR_WAYSHRINE].provider = function()
+        return self:GetNearestWayshrinePosition()
+    end
+
+    self.markers[MINIMAP_EDGE_INDICATOR_ROUTE].provider = function()
+        return self:GetNearestRoutePoint()
+    end
+
+    self.markers[MINIMAP_EDGE_INDICATOR_NPC].provider = function()
+        return self:GetFoundNpcPosition()
+    end
 end
 
 function MiniMap:ApplyLayout()
@@ -408,8 +418,10 @@ function MiniMap:ApplyLayout()
     self.spotMarkerSize = Clamp(math.floor(self.size * MINIMAP_SIZE_FACTOR_SPOT_BACKDROP_MARKER), 9, 30)
     self.spotTextureMarkerSize = Clamp(math.floor(self.size * MINIMAP_SIZE_FACTOR_SPOT_TEXTURE_MARKER), 18, 40)
 
-    for _, indicator in pairs(self.edgeIndicators) do
-        indicator.control:SetDimensions(playerSize, playerSize)
+    for id, marker in pairs(self.markers) do
+        if marker.edgeControl then
+            marker.edgeControl:SetDimensions(playerSize, playerSize)
+        end
     end
 
     self:ApplyToolbarLayout()
@@ -667,39 +679,95 @@ function MiniMap:UpdateDebugLabel()
     self.debugWindow:SetHidden(false)
 end
 
-function MiniMap:RegisterEdgeIndicator(id, options)
-    local indicator = self.edgeIndicators[id]
-    local texture = options.texture or "MiniMap\\media\\edge_indicator_triangle.dds"
-    
-    if not indicator then
-        local control = WINDOW_MANAGER:CreateControl("MiniMapEdgeIndicator" .. id, self.root, CT_TEXTURE)
-        control:SetTexture(texture)
-        control:SetDrawLayer(DL_OVERLAY)
+function MiniMap:CreateMarkerControl(controlName, controlType, texture, color)
+    local control = WINDOW_MANAGER:CreateControl(controlName, self.root, controlType)
+    control:SetDrawLayer(DL_OVERLAY)
+    control:SetHidden(true)
+
+    if controlType == CT_TEXTURE then
+        if texture then
+            control:SetTexture(texture)
+        end
+        if color then
+            control:SetColor(color[1], color[2], color[3], color[4] or 1)
+        end
+    elseif controlType == CT_BACKDROP then
+        if color then
+            control:SetCenterColor(color[1], color[2], color[3], 1)
+            control:SetEdgeColor(color[1] * 0.5, color[2] * 0.5, color[3] * 0.5, 1)
+            control:SetEdgeTexture(nil, 1, 1, 2)
+        end
+    end
+
+    return control
+end
+
+function MiniMap:CreateMarkerControls(id, marker)
+    local def = marker.definition
+    local baseName = "MiniMapMarker" .. id
+
+    if def.hasEdge then
+        local controlType = def.type == MINIMAP_MARKER_TYPE_TEXTURE and CT_TEXTURE or CT_BACKDROP
+        marker.edgeControl = self:CreateMarkerControl(baseName, controlType, def.texture, def.color)
+    end
+
+    if def.hasInside then
+        local insideType = def.type == MINIMAP_MARKER_TYPE_TEXTURE and CT_TEXTURE or CT_BACKDROP
+        marker.insideControl = self:CreateMarkerControl(baseName .. "Inside", insideType, def.texture, def.color)
+    end
+end
+
+function MiniMap:UpdateMarkerControl(control, localX, localY, size)
+    control:ClearAnchors()
+    control:SetAnchor(CENTER, self.root, TOPLEFT, localX, localY)
+    control:SetDimensions(size, size)
+    control:SetHidden(false)
+end
+
+function MiniMap:UpdateMarker(marker, localX, localY, distFromCenter, radius, margin, markerSize, insideMarkerSize, center)
+    local def = marker.definition
+
+    if distFromCenter >= (radius - margin) and def.hasEdge then
+        if marker.insideControl then
+            marker.insideControl:SetHidden(true)
+        end
+        if marker.edgeControl then
+            self:PositionMarkerAtEdge(marker.edgeControl, self.root, center, radius, localX - center, localY - center, markerSize, def)
+        end
+    elseif def.hasInside then
+        if marker.edgeControl then
+            marker.edgeControl:SetHidden(true)
+        end
+        if marker.insideControl then
+            local size = insideMarkerSize
+            if def.type == MINIMAP_MARKER_TYPE_TEXTURE then
+                size = self.spotTextureMarkerSize
+            end
+            self:UpdateMarkerControl(marker.insideControl, localX, localY, size)
+        end
+    end
+end
+
+function MiniMap:PositionMarkerAtEdge(control, root, center, radius, dx, dy, markerSize, def)
+    local length = math.sqrt((dx * dx) + (dy * dy))
+    if length <= 0.0001 then
         control:SetHidden(true)
-
-        local insideControl = WINDOW_MANAGER:CreateControl("MiniMapEdgeIndicatorInside" .. id, self.root, CT_BACKDROP)
-        insideControl:SetDrawLayer(DL_OVERLAY)
-        insideControl:SetEdgeTexture(nil, 1, 1, 2)
-        insideControl:SetHidden(true)
-
-        indicator = {
-            control = control,
-            insideControl = insideControl,
-        }
-        self.edgeIndicators[id] = indicator
-        self.edgeIndicatorOrder[#self.edgeIndicatorOrder + 1] = id
-    else
-        indicator.control:SetTexture(texture)
+        return
     end
 
-    indicator.provider = options.provider
-    
-    if options.color then
-        indicator.color = { options.color[1], options.color[2], options.color[3], options.color[4] }
-        indicator.control:SetColor(indicator.color[1], indicator.color[2], indicator.color[3], indicator.color[4] or 1)
-        indicator.insideControl:SetCenterColor(indicator.color[1], indicator.color[2], indicator.color[3], 1)
-        indicator.insideControl:SetEdgeColor(indicator.color[1] * 0.5, indicator.color[2] * 0.5, indicator.color[3] * 0.5, 1)
+    local unitX = dx / length
+    local unitY = dy / length
+    local edgeRadius = radius - (markerSize * 0.34)
+
+    control:SetDimensions(markerSize, markerSize)
+    control:ClearAnchors()
+    control:SetAnchor(CENTER, root, TOPLEFT, center + (unitX * edgeRadius), center + (unitY * edgeRadius))
+
+    if control.SetTextureRotation then
+        control:SetTextureRotation(GetRotationFromUp(unitX, unitY))
     end
+
+    control:SetHidden(false)
 end
 
 function MiniMap:GetFocusedQuestIndex()
@@ -891,28 +959,6 @@ function MiniMap:ClearFoundNpc()
     self.foundNpc = nil
 end
 
-local function PositionEdgeIndicatorAtEdge(indicator, root, center, radius, dx, dy, markerSize)
-    local length = math.sqrt((dx * dx) + (dy * dy))
-    if length <= 0.0001 then
-        indicator.control:SetHidden(true)
-        return
-    end
-
-    local unitX = dx / length
-    local unitY = dy / length
-    local edgeRadius = radius - (markerSize * 0.34)
-
-    indicator.control:SetDimensions(markerSize, markerSize)
-    indicator.control:ClearAnchors()
-    indicator.control:SetAnchor(CENTER, root, TOPLEFT, center + (unitX * edgeRadius), center + (unitY * edgeRadius))
-
-    if indicator.control.SetTextureRotation then
-        indicator.control:SetTextureRotation(GetRotationFromUp(unitX, unitY))
-    end
-
-    indicator.control:SetHidden(false)
-end
-
 function MiniMap:UpdateEdgeIndicators(playerX, playerY, mapRotation)
     local radius = self.size / 2
     local center = radius
@@ -923,52 +969,46 @@ function MiniMap:UpdateEdgeIndicators(playerX, playerY, mapRotation)
     self:UpdateSpotMarkers(playerX, playerY, mapRotation, center, radius, margin)
     self:UpdateRouteSegments(playerX, playerY, mapRotation, center, radius)
 
-    for _, id in ipairs(self.edgeIndicatorOrder) do
-        local indicator = self.edgeIndicators[id]
-        local targetX, targetY = indicator.provider()
+    for id, marker in pairs(self.markers) do
+        if marker.provider then
+            local targetX, targetY = marker.provider()
 
-        if targetX and targetY then
-            local localX, localY, distFromCenter, dx, dy = WorldToLocal(targetX, targetY, playerX, playerY, self.mapSize, mapRotation, center)
-
-            if distFromCenter >= (radius - margin) then
-                indicator.insideControl:SetHidden(true)
-                PositionEdgeIndicatorAtEdge(indicator, self.root, center, radius, dx, dy, markerSize)
-            else
-                indicator.control:SetHidden(true)
-                indicator.insideControl:ClearAnchors()
-                indicator.insideControl:SetAnchor(CENTER, self.root, TOPLEFT, localX, localY)
-                indicator.insideControl:SetDimensions(insideMarkerSize, insideMarkerSize)
-                indicator.insideControl:SetHidden(false)
+            if not marker.edgeControl then
+                self:CreateMarkerControls(id, marker)
             end
-        else
-            indicator.control:SetHidden(true)
-            indicator.insideControl:SetHidden(true)
+
+            if targetX and targetY then
+                local localX, localY, distFromCenter, dx, dy = WorldToLocal(targetX, targetY, playerX, playerY, self.mapSize, mapRotation, center)
+                self:UpdateMarker(marker, localX, localY, distFromCenter, radius, margin, markerSize, insideMarkerSize, center)
+            else
+                if marker.edgeControl then
+                    marker.edgeControl:SetHidden(true)
+                end
+                if marker.insideControl then
+                    marker.insideControl:SetHidden(true)
+                end
+            end
         end
     end
 end
 
 function MiniMap:UpdateSpotMarkers(playerX, playerY, mapRotation, center, radius, margin)
+    local MAX_MARKERS_PER_CAT = 20
+
     if not self.spotMarkersInitialized then
-        local MAX_MARKERS_PER_CAT = 20
         ForEachCategory(function(cat)
             self.spotMarkers[cat.key] = {}
             for i = 1, MAX_MARKERS_PER_CAT do
                 local controlName = self.root:GetName() .. SpotMarker_ .. cat.key .. i
-                local control = nil
                 local texture = MINIMAP_SPOT_TEXTURES[cat.key]
-                if texture then
-                    control = WINDOW_MANAGER:CreateControl(controlName, self.root, CT_TEXTURE)
-                    control:SetTexture(texture)
-                    control:SetColor(1, 1, 1, 1)
-                else
-                    control = WINDOW_MANAGER:CreateControl(controlName, self.root, CT_BACKDROP)
-                    control:SetCenterColor(cat.color[1], cat.color[2], cat.color[3], 1)
-                    control:SetEdgeColor(0, 0, 0, 1)
-                    control:SetEdgeTexture(nil, 1, 1, 2)
-                end
-                control:SetDrawLayer(DL_OVERLAY)
-                control:SetHidden(true)
-                self.spotMarkers[cat.key][i] = control
+                local controlType = texture and CT_TEXTURE or CT_BACKDROP
+                local color = texture and {1, 1, 1, 1} or cat.color
+                local control = self:CreateMarkerControl(controlName, controlType, texture, color)
+                self.spotMarkers[cat.key][i] = {
+                    control = control,
+                    texture = texture,
+                    color = cat.color,
+                }
             end
         end)
         self.spotMarkersInitialized = true
@@ -979,7 +1019,7 @@ function MiniMap:UpdateSpotMarkers(playerX, playerY, mapRotation, center, radius
         ForEachCategory(function(cat)
             local markers = self.spotMarkers[cat.key]
             for i = 1, #markers do
-                markers[i]:SetHidden(true)
+                markers[i].control:SetHidden(true)
             end
         end)
         return
@@ -995,18 +1035,15 @@ function MiniMap:UpdateSpotMarkers(playerX, playerY, mapRotation, center, radius
             local localX, localY, distFromCenter = WorldToLocal(spot.x, spot.y, playerX, playerY, self.mapSize, mapRotation, center)
 
             if distFromCenter < (radius - margin) and markerIndex <= #markers then
-                local marker = markers[markerIndex]
+                local markerData = markers[markerIndex]
                 local markerSize = isTexture and self.spotTextureMarkerSize or self.spotMarkerSize
-                marker:ClearAnchors()
-                marker:SetAnchor(CENTER, self.root, TOPLEFT, localX, localY)
-                marker:SetDimensions(markerSize, markerSize)
-                marker:SetHidden(false)
+                self:UpdateMarkerControl(markerData.control, localX, localY, markerSize)
                 markerIndex = markerIndex + 1
             end
         end
 
         for i = markerIndex, #markers do
-            markers[i]:SetHidden(true)
+            markers[i].control:SetHidden(true)
         end
     end)
 end
