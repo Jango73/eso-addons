@@ -435,7 +435,7 @@ function MiniMap:RegisterSettingsMenu()
         type = 'panel',
         name = 'MiniMap',
         displayName = 'MiniMap',
-        author = 'Codex',
+        author = 'Jango73',
         version = '1.0.0',
         slashCommand = '/minimapsettings',
         registerForRefresh = true,
