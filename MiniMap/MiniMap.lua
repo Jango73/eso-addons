@@ -242,7 +242,11 @@ function MiniMap:CreateControls()
 
         btn:SetMouseOverTexture("EsoUI/Art/Buttons/left_up.dds")
         btn:SetHandler("OnClicked", function()
-            AddSpotAtPlayer(cat.key)
+            if IsShiftKeyDown() then
+                self:HandleSlashCommand("route " .. cat.key)
+            else
+                AddSpotAtPlayer(cat.key)
+            end
         end)
         SetupButtonTooltip(btn, btnBg,
             { cat.color[1] * 0.7, cat.color[2] * 0.7, cat.color[3] * 0.7, 0.9 },
@@ -739,7 +743,7 @@ function MiniMap:GetNearestWayshrinePosition()
 
     for i = 1, numNodes do
         local known, name, x, y, icon, glowIcon, poiType, isShown, linkedLocked = GetFastTravelNodeInfo(i)
-        if x and y and known and poiType == POI_TYPE_WAYSHRINE then
+        if x and y and poiType == POI_TYPE_WAYSHRINE then
             local dx = x - px
             local dy = y - py
             local dist = dx * dx + dy * dy
@@ -1314,9 +1318,7 @@ function MiniMap:Initialize()
         end
 
         MiniMap:UpdatePlayer()
-        
-        local isPointerMode = IsGameCameraUIModeActive and IsGameCameraUIModeActive()
-        
+
         if sceneShown then
             MiniMap.root:SetHidden(true)
             if MiniMap.toolbar then MiniMap.toolbar:SetHidden(true) end
@@ -1330,6 +1332,7 @@ function MiniMap:Initialize()
                 local huduiScene = SCENE_MANAGER:GetScene("hudui")
                 isHudShowing = (hudScene and hudScene.state and hudScene.state ~= "hidden") or (huduiScene and huduiScene.state and huduiScene.state ~= "hidden")
             end
+            local isPointerMode = IsGameCameraUIModeActive and IsGameCameraUIModeActive()
             local toolbarVisible = MiniMap.saved.showToolbar and isPointerMode and isHudShowing
             if MiniMap.toolbar then MiniMap.toolbar:SetHidden(not toolbarVisible) end
             MiniMap.root:SetHidden(not isHudShowing)

@@ -284,7 +284,7 @@ function NoteRenderer:ApplyLayout(noteCount)
     local corner = self.owner and self.owner.saved and self.owner.saved.corner or "bottomright"
 
     local panelHeight = NOTE_ITEM_HEIGHT * self.MAX_VISIBLE + 46
-    local panelWidth = self.owner and self.owner.size or 130
+    local panelWidth = (self.owner and self.owner.size or 130) * 0.8
     local panelPadding = 6
 
     self.notesPanel:ClearAnchors()
@@ -294,11 +294,11 @@ function NoteRenderer:ApplyLayout(noteCount)
     local isRight = (corner == "right")
 
     if isTop or isLeft or isRight then
-        self.notesPanel:SetAnchor(TOPLEFT, self.owner.root, BOTTOMLEFT, 0, 8)
+        self.notesPanel:SetAnchor(TOP, self.owner.root, BOTTOM, 0, 8)
     elseif isBottom then
-        self.notesPanel:SetAnchor(BOTTOMLEFT, self.owner.root, TOPLEFT, 0, -8)
+        self.notesPanel:SetAnchor(BOTTOM, self.owner.root, TOP, 0, -8)
     else
-        self.notesPanel:SetAnchor(TOPLEFT, self.owner.root, BOTTOMLEFT, 0, 8)
+        self.notesPanel:SetAnchor(TOP, self.owner.root, BOTTOM, 0, 8)
     end
 
     self.notesPanel:SetDimensions(panelWidth, panelHeight)

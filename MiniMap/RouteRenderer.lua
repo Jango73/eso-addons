@@ -80,7 +80,7 @@ function RouteRenderer:Update(playerX, playerY, mapRotation, center, radius, cur
             local midY = (localY1 + localY2) / 2
             control:ClearAnchors()
             control:SetAnchor(CENTER, self.owner.root, TOPLEFT, midX, midY)
-            control:SetDimensions(math.max(length, 4), 4)
+            control:SetDimensions(math.max(length, 4), 3)
             control:SetColor(MINIMAP_ROUTE_COLOR[1], MINIMAP_ROUTE_COLOR[2], MINIMAP_ROUTE_COLOR[3], MINIMAP_ROUTE_COLOR[4])
             control:SetTextureRotation(angle)
             control:SetHidden(false)
