@@ -2,6 +2,7 @@ RouteManager = {
     _data = nil,
     _currentRoute = nil,
     _selectedCategories = {},
+    _useAllCategories = false,
     _lastMapName = nil,
 }
 RouteManager.__index = RouteManager
@@ -57,9 +58,14 @@ end
 function RouteManager:Init(savedVars)
     self._data = savedVars
     self._selectedCategories = {}
+    self._useAllCategories = false
 end
 
 function RouteManager:GetSelectedCategories()
+    if self._useAllCategories then
+        return { "all" }
+    end
+
     local result = {}
     for cat, _ in pairs(self._selectedCategories) do
         if _ then table.insert(result, cat) end
@@ -72,6 +78,7 @@ function RouteManager:IsCategorySelected(category)
 end
 
 function RouteManager:ToggleCategory(category)
+    self._useAllCategories = false
     if self._selectedCategories[category] then
         self._selectedCategories[category] = nil
     else
@@ -80,14 +87,21 @@ function RouteManager:ToggleCategory(category)
 end
 
 function RouteManager:SetSelectedCategories(categories)
+    self._useAllCategories = false
     self._selectedCategories = {}
     for _, cat in ipairs(categories) do
         self._selectedCategories[cat] = true
     end
 end
 
+function RouteManager:SetAllCategories()
+    self._selectedCategories = {}
+    self._useAllCategories = true
+end
+
 function RouteManager:ClearCategories()
     self._selectedCategories = {}
+    self._useAllCategories = false
 end
 
 function RouteManager:GetRoute()
@@ -110,12 +124,22 @@ function RouteManager:CalculateRoute(playerX, playerY, mapName)
     local allSpots = {}
     local zoneSpots = SpotDatabase:GetSpotsByMap(mapName)
     if zoneSpots then
-        for cat, _ in pairs(self._selectedCategories) do
-            if _ and type(cat) == "string" then
-                local spots = zoneSpots[cat]
-                if spots then
+        if self._useAllCategories then
+            for _, spots in pairs(zoneSpots) do
+                if type(spots) == "table" then
                     for _, spot in ipairs(spots) do
                         table.insert(allSpots, spot)
+                    end
+                end
+            end
+        else
+            for cat, _ in pairs(self._selectedCategories) do
+                if _ and type(cat) == "string" then
+                    local spots = zoneSpots[cat]
+                    if spots then
+                        for _, spot in ipairs(spots) do
+                            table.insert(allSpots, spot)
+                        end
                     end
                 end
             end
@@ -135,15 +159,26 @@ end
 
 function RouteManager:RecalculateIfNeeded(playerX, playerY, mapName)
     local categoriesChanged = false
-    for cat, _ in pairs(self._selectedCategories) do
-        if _ then
-            local oldCount = self._lastCategoryCounts and self._lastCategoryCounts[cat] or 0
-            local newCount = SpotDatabase:GetSpotCount(cat, mapName)
-            if oldCount ~= newCount then
-                categoriesChanged = true
+    self._lastCategoryCounts = self._lastCategoryCounts or {}
+
+    if self._useAllCategories then
+        local oldCount = self._lastCategoryCounts.all or 0
+        local newCount = SpotDatabase:GetSpotCount(nil, mapName)
+        if oldCount ~= newCount then
+            categoriesChanged = true
+        end
+        self._lastCategoryCounts.all = newCount
+    else
+        self._lastCategoryCounts.all = nil
+        for cat, _ in pairs(self._selectedCategories) do
+            if _ then
+                local oldCount = self._lastCategoryCounts[cat] or 0
+                local newCount = SpotDatabase:GetSpotCount(cat, mapName)
+                if oldCount ~= newCount then
+                    categoriesChanged = true
+                end
+                self._lastCategoryCounts[cat] = newCount
             end
-            self._lastCategoryCounts = self._lastCategoryCounts or {}
-            self._lastCategoryCounts[cat] = newCount
         end
     end
 
@@ -189,8 +224,12 @@ function RouteManager:GetRouteInfo()
     local count = #self._currentRoute
     local totalDist = CalculateTotalDistance(self._currentRoute)
     local cats = {}
-    for cat, _ in pairs(self._selectedCategories) do
-        if _ then table.insert(cats, cat) end
+    if self._useAllCategories then
+        table.insert(cats, "all")
+    else
+        for cat, _ in pairs(self._selectedCategories) do
+            if _ then table.insert(cats, cat) end
+        end
     end
 
     return string.format("Route: %d spots, %.2f distance, categories: %s", count, totalDist, table.concat(cats, ", "))

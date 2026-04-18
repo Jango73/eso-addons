@@ -153,14 +153,20 @@ function MiniMap:CreateControls()
     local background = WINDOW_MANAGER:CreateControl("MiniMapBackground", root, CT_BACKDROP)
     background:SetAnchorFill(root)
     background:SetCenterColor(0, 0, 0, 0.32)
-    background:SetEdgeColor(0, 0, 0, 0.85)
-    background:SetEdgeTexture("", 1, 1, 2)
+    background:SetEdgeColor(0, 0, 0, 0)
+    background:SetEdgeTexture("", 1, 1, 0)
 
     local map = WINDOW_MANAGER:CreateControl("MiniMapMap", root, CT_CONTROL)
     map:SetAnchor(TOPLEFT, root, TOPLEFT, 0, 0)
     if map.SetTransformNormalizedOriginPoint then
         map:SetTransformNormalizedOriginPoint(0.5, 0.5)
     end
+
+    local border = WINDOW_MANAGER:CreateControl("MiniMapBorder", root, CT_TEXTURE)
+    border:SetAnchorFill(root)
+    border:SetTexture(MINIMAP_BORDER_TEXTURE)
+    border:SetDrawLayer(DL_CONTROLS)
+    border:SetDrawLevel(5)
 
     local player = WINDOW_MANAGER:CreateControl("MiniMapPlayer", root, CT_TEXTURE)
     player:SetAnchor(CENTER, root, CENTER, 0, 0)
@@ -189,6 +195,7 @@ function MiniMap:CreateControls()
     self.root = root
     self.background = background
     self.map = map
+    self.border = border
     self.player = player
     self.debugWindow = debugWindow
     self.debugBackground = debugBackground
@@ -203,7 +210,12 @@ function MiniMap:CreateControls()
     local toolbarBg = WINDOW_MANAGER:CreateControl("MiniMapToolbarBg", toolbar, CT_BACKDROP)
     toolbarBg:SetAnchorFill(toolbar)
     toolbarBg:SetCenterColor(0, 0, 0, 0.7)
-    toolbarBg:SetEdgeColor(0.5, 0.5, 0.5, 0.8)
+    toolbarBg:SetEdgeColor(
+        MINIMAP_ESO_BORDER_COLOR[1],
+        MINIMAP_ESO_BORDER_COLOR[2],
+        MINIMAP_ESO_BORDER_COLOR[3],
+        MINIMAP_ESO_BORDER_COLOR[4]
+    )
     toolbarBg:SetEdgeTexture("", 1, 1, 2)
 
     local buttonSize = 32
@@ -341,6 +353,7 @@ function MiniMap:ApplyLayout()
     self.root:ClearAnchors()
     self.root:SetAnchor(corner.anchor, GuiRoot, corner.relative, corner.x, corner.y)
     self.root:SetDimensions(self.size, self.size)
+    self.border:SetDimensions(self.size, self.size)
     self.map:SetDimensions(self.mapSize, self.mapSize)
     self.root:SetAlpha(MiniMapRenderUtils.Clamp(self.saved.opacity or DEFAULTS.opacity, 20, 100) / 100)
     self:ApplyDebugLayout()
@@ -947,7 +960,7 @@ function MiniMap:ShowHelp()
     Echo("/minimap log clear")
     Echo("/minimap clean")
     Echo("/minimap pos")
-    Echo("/minimap route <category1 category2 ...>")
+    Echo("/minimap route <category1 category2 ...>|all")
     Echo("/minimap route clear")
     Echo("/minimap route info")
 end
@@ -1083,6 +1096,26 @@ function MiniMap:HandleSlashCommand(arguments)
             Print("Position unknown")
         end
     elseif command == "route" then
+        local routeCommand = zo_strlower(zo_strmatch(value or "", "^(%S*)") or "")
+        if routeCommand == "clear" then
+            RouteManager:ClearCategories()
+            RouteManager:ClearRoute()
+            Print("Route cleared")
+            return
+        elseif routeCommand == "info" then
+            if RouteManager:IsRouteActive() then
+                Print(RouteManager:GetRouteInfo())
+            else
+                Print("No route active")
+            end
+            return
+        elseif routeCommand == "all" then
+            RouteManager:SetAllCategories()
+            RouteManager:CalculateRoute(self.playerMapX, self.playerMapY, self.currentMapName)
+            Print(RouteManager:GetRouteInfo())
+            return
+        end
+
         local categories = {}
         for cat in string.gmatch(value, "%S+") do
             if IsValidCategory(cat) then
@@ -1091,8 +1124,8 @@ function MiniMap:HandleSlashCommand(arguments)
         end
 
         if #categories == 0 then
-            Echo("Usage: /minimap route <category1 category2 ...>")
-            Echo("Available: chest jewelry ore plant poison rune silk thief_chest water wood")
+            Echo("Usage: /minimap route <category1 category2 ...>|all")
+            Echo("Available: all book chest home jewelry ore plant rune shard silk thief_chest water wood")
             return
         end
 
