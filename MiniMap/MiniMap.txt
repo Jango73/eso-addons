@@ -11,6 +11,7 @@
 
 MiniMapConstants.lua
 MiniMapRenderUtils.lua
+Locale.lua
 SpotDatabase.lua
 NPCDatabase.lua
 NoteDatabase.lua

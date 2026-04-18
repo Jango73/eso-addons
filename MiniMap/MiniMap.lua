@@ -63,17 +63,6 @@ local function ParseArgument(arg)
     return command, nil
 end
 
-local function GetLanguage()
-    local language = GetCVar and GetCVar("Language.2") or nil
-    language = zo_strlower(language or "")
-
-    if string.sub(language, 1, 2) == "fr" then
-        return "fr"
-    end
-
-    return "en"
-end
-
 local function NormalizeCorner(value)
     value = zo_strlower(value or "")
 
@@ -420,8 +409,7 @@ function MiniMap:ApplyToolbarLayout()
 end
 
 function MiniMap:Text(key)
-    local strings = STRINGS[self.language] or STRINGS.en
-    return strings[key] or STRINGS.en[key] or key
+    return Locale.GetString(key)
 end
 
 function MiniMap:RegisterSettingsMenu()
@@ -1070,35 +1058,35 @@ function MiniMap:HandleSlashCommand(arguments)
         end
     elseif command == "spots" then
         local total = SpotDatabase:GetSpotCount()
-        Print("Total spots: " .. total)
+        Print(string.format(self:Text("totalSpots"), total))
         ForEachCategory(function(cat)
-            Print("  " .. cat.key .. ": " .. SpotDatabase:GetSpotCount(cat.key))
+            Print(string.format(self:Text("spotsCount"), cat.key, SpotDatabase:GetSpotCount(cat.key)))
         end)
     elseif command == "clear" then
         if value == "all" then
             if pendingClearConfirm == "all" then
                 SpotDatabase:Clear()
-                Print("All spots cleared")
+                Print(self:Text("allSpotsCleared"))
                 pendingClearConfirm = nil
             else
                 pendingClearConfirm = "all"
-                Print("Confirm: type /minimap clear all again to clear ALL spots")
+                Print(self:Text("confirmClearSpots"))
             end
         elseif IsValidCategory(value) then
             SpotDatabase:Clear(value)
-            Print(value .. " spots cleared")
+            Print(string.format(self:Text("spotsCleared"), value))
         elseif value == "cancel" then
             pendingClearConfirm = nil
-            Print("Clear cancelled")
+            Print(self:Text("clearCancelled"))
         else
             Echo("Usage: /minimap clear <category>|all|cancel")
         end
     elseif command == "log" then
         if value == "clear" then
             MiniMap.debugLog = {}
-            Print("Debug log cleared")
+            Print(self:Text("debugLogCleared"))
         elseif not MiniMap.debugLog or #MiniMap.debugLog == 0 then
-            Print("No debug log")
+            Print(self:Text("noDebugLog"))
             return
         else
             for i, msg in ipairs(MiniMap.debugLog) do
@@ -1107,26 +1095,26 @@ function MiniMap:HandleSlashCommand(arguments)
         end
     elseif command == "clean" then
         local removed = SpotDatabase:CleanDuplicates(true)
-        Print(tostring(removed) .. " removed")
+        Print(string.format(self:Text("removed"), removed))
     elseif command == "pos" then
         local x, y = GetMapPlayerPosition("player")
         if x and y then
-            Print("Position: " .. string.format("%.4f, %.4f", x, y))
+            Print(string.format(self:Text("position"), x, y))
         else
-            Print("Position unknown")
+            Print(self:Text("positionUnknown"))
         end
     elseif command == "route" then
         local routeCommand = zo_strlower(zo_strmatch(value or "", "^(%S*)") or "")
         if routeCommand == "clear" then
             RouteManager:ClearCategories()
             RouteManager:ClearRoute()
-            Print("Route cleared")
+            Print(self:Text("routeCleared"))
             return
         elseif routeCommand == "info" then
             if RouteManager:IsRouteActive() then
                 Print(RouteManager:GetRouteInfo())
             else
-                Print("No route active")
+                Print(self:Text("noRouteActive"))
             end
             return
         elseif routeCommand == "all" then
@@ -1159,12 +1147,12 @@ function MiniMap:HandleSlashCommand(arguments)
     elseif command == "routeclear" then
         RouteManager:ClearCategories()
         RouteManager:ClearRoute()
-        Print("Route cleared")
+        Print(self:Text("routeCleared"))
     elseif command == "routeinfo" then
         if RouteManager:IsRouteActive() then
             Print(RouteManager:GetRouteInfo())
         else
-            Print("No route active")
+            Print(self:Text("noRouteActive"))
         end
     elseif command == "find" then
         local npcName = nil
@@ -1177,7 +1165,7 @@ function MiniMap:HandleSlashCommand(arguments)
         end
         if not npcName or npcName == "" then
             self:ClearFoundNpc()
-            Print("NPC target cleared")
+            Print(self:Text("npcTargetCleared"))
             return
         end
         local results = NPCDatabase:SearchNPCs(npcName, self.currentMapName)
@@ -1185,9 +1173,9 @@ function MiniMap:HandleSlashCommand(arguments)
             local match = results[1]
             self.foundNpc = match.name
             if #results > 1 then
-                Print(string.format("Tracking: %s (%.4f, %.4f) [%d matches]", match.name, match.x, match.y, #results))
+                Print(string.format(self:Text("tracking"), match.name, match.x, match.y, #results))
             else
-                Print(string.format("Tracking: %s (%.4f, %.4f)", match.name, match.x, match.y))
+                Print(string.format(self:Text("trackingSingle"), match.name, match.x, match.y))
             end
         else
             self:ClearFoundNpc()
@@ -1204,9 +1192,9 @@ function MiniMap:HandleSlashCommand(arguments)
                 for zone, count in pairs(zones) do
                     table.insert(zoneList, zone .. " (" .. count .. ")")
                 end
-                Print("NPC not found in current zone. Found in: " .. table.concat(zoneList, ", "))
+                Print(string.format(self:Text("npcNotFoundZone"), table.concat(zoneList, ", ")))
             else
-                Print("NPC not found: " .. npcName)
+                Print(string.format(self:Text("npcNotFound"), npcName))
             end
         end
     elseif command == "npc" then
@@ -1227,15 +1215,15 @@ function MiniMap:HandleSlashCommand(arguments)
             end
             local results = NPCDatabase:SearchNPCs(npcQuery)
             if #results == 0 then
-                Print("No NPCs found matching: " .. npcQuery)
+                Print(string.format(self:Text("noNpcsFound"), npcQuery))
             else
-                Print(string.format("Found %d NPC(s):", #results))
+                Print(string.format(self:Text("foundNpcs"), #results))
                 for i, npc in ipairs(results) do
                     if i > 20 then
-                        Print("  ... and " .. (#results - 20) .. " more")
+                        Print(string.format(self:Text("moreNpcs"), #results - 20))
                         break
                     end
-                    Print(string.format("  [%s] %s (%.4f, %.4f)", npc.map, npc.name, npc.x, npc.y))
+                    Print(string.format(self:Text("npcEntry"), npc.map, npc.name, npc.x, npc.y))
                 end
             end
         elseif subCmd == "list" or subCmd == "ls" then
@@ -1246,28 +1234,28 @@ function MiniMap:HandleSlashCommand(arguments)
                 mapCount = mapCount + 1
                 npcCount = npcCount + count
             end
-            Print(string.format("NPC database: %d maps, %d total NPCs", mapCount, npcCount))
+            Print(string.format(self:Text("npcDatabaseInfo"), mapCount, npcCount))
             if mapCount > 0 then
                 for mapName, count in pairs(maps) do
-                    Print(string.format("  %s: %d NPCs", mapName, count))
+                    Print(string.format(self:Text("npcsInZone"), mapName, count))
                 end
             end
         elseif subCmd == "clear" then
             if pendingClearConfirm == "npc" then
                 NPCDatabase:Clear()
-                Print("All NPCs cleared")
+                Print(self:Text("allNpcsCleared"))
                 pendingClearConfirm = nil
             else
                 pendingClearConfirm = "npc"
-                Print("Confirm: type /minimap npc clear again to clear ALL NPCs")
+                Print(self:Text("confirmClearNpcs"))
             end
         elseif subCmd == "here" then
             local npcs = NPCDatabase:GetNPCsByMap(self.currentMapName)
             local count = 0
             for _ in pairs(npcs) do count = count + 1 end
-            Print(string.format("%d NPCs in %s", count, self.currentMapName or "unknown"))
+            Print(string.format(self:Text("npcsInMap"), count, self.currentMapName or "unknown"))
             for name, data in pairs(npcs) do
-                Print(string.format("  %s (%.4f, %.4f)", name, data.x, data.y))
+                Print(string.format(self:Text("npcDataEntry"), name, data.x, data.y))
             end
         else
             Echo("NPC commands:")
@@ -1296,7 +1284,7 @@ function MiniMap:Initialize()
     self.routeManager = RouteManager
     self.routeManager:Init()
 
-    self.language = GetLanguage()
+    self.language = Locale.GetLanguage()
 
     self:CreateControls()
     self:ApplyLayout()
