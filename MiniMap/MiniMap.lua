@@ -321,6 +321,9 @@ function MiniMap:CreateControls()
     self.spotRenderer = SpotRenderer
     self.spotRenderer:Init(self)
 
+    self.noteRenderer = NoteRenderer
+    self.noteRenderer:Init(self)
+
     self.routeRenderer = RouteRenderer
     self.routeRenderer:Init(self, self.routeManager)
 
@@ -376,6 +379,12 @@ function MiniMap:ApplyLayout()
 
     if self.toolbar then
         self.toolbar:SetHidden(not self.saved.showToolbar)
+    end
+
+    if self.noteRenderer then
+        local noteCount = NoteDatabase:GetNoteCount()
+        self.noteRenderer:ApplyLayout(noteCount)
+        self.noteRenderer:Update(noteCount)
     end
 end
 
@@ -573,6 +582,20 @@ function MiniMap:RegisterSettingsMenu()
                 self:ApplyToolbarLayout()
             end,
             default = DEFAULTS.showToolbar,
+            width = 'full',
+        },
+        {
+            type = 'checkbox',
+            name = self:Text('showNotesName'),
+            tooltip = self:Text('showNotesTooltip'),
+            getFunc = function()
+                return self.saved.showNotes
+            end,
+            setFunc = function(value)
+                self.saved.showNotes = value
+                self:ApplyLayout()
+            end,
+            default = DEFAULTS.showNotes,
             width = 'full',
         },
     }
@@ -949,7 +972,6 @@ function MiniMap:ShowHelp()
     Echo(self:Text("helpOpacity"))
     Echo(self:Text("helpZoom"))
     Echo(self:Text("helpVisibility"))
-    Echo("/minimap settings")
     Echo("/minimap add <category>")
     Echo("/minimap spots")
     Echo("/minimap find <name>")
@@ -1036,8 +1058,6 @@ function MiniMap:HandleSlashCommand(arguments)
         self.saved.debug = not self.saved.debug
         self:UpdateDebugLabel()
         Print("Debug: " .. tostring(self.saved.debug))
-    elseif command == "settings" then
-        LIB_FILTERS_2:OpenKeyboardMenu(ADDON_NAME)
     elseif command == "add" then
         if IsValidCategory(value) then
             AddSpotAtPlayer(value)
@@ -1270,6 +1290,9 @@ function MiniMap:Initialize()
     self.npcs = ZO_SavedVars:NewAccountWide("MiniMapNPCs", 1, nil, {})
     NPCDatabase:Init(self.npcs)
 
+    self.notes = ZO_SavedVars:NewAccountWide("MiniMapNotes", 1, nil, {})
+    NoteDatabase:Init(self.notes)
+
     self.routeManager = RouteManager
     self.routeManager:Init()
 
@@ -1309,6 +1332,8 @@ function MiniMap:Initialize()
         if sceneShown then
             MiniMap.root:SetHidden(true)
             if MiniMap.toolbar then MiniMap.toolbar:SetHidden(true) end
+            if MiniMap.noteRenderer then MiniMap.noteRenderer:CloseEditor() end
+            if MiniMap.noteRenderer and MiniMap.noteRenderer.notesPanel then MiniMap.noteRenderer.notesPanel:SetHidden(true) end
             lastMapOpen = true
         elseif not MiniMap.saved.hidden then
             local isHudShowing = true
@@ -1320,6 +1345,10 @@ function MiniMap:Initialize()
             local toolbarVisible = MiniMap.saved.showToolbar and isPointerMode and isHudShowing
             if MiniMap.toolbar then MiniMap.toolbar:SetHidden(not toolbarVisible) end
             MiniMap.root:SetHidden(not isHudShowing)
+            if MiniMap.noteRenderer and MiniMap.noteRenderer.notesPanel then
+                local notesVisible = MiniMap.saved.showNotes and isHudShowing
+                MiniMap.noteRenderer.notesPanel:SetHidden(not notesVisible)
+            end
             if lastMapOpen then
                 lastMapOpen = false
                 MiniMap:RefreshMapToPlayerLocation(true)
@@ -1400,6 +1429,72 @@ function MiniMap:Initialize()
     end)
 end
 
+local function SetupNoteEvents()
+    if not MiniMap.noteRenderer then
+        return
+    end
+
+    local addBtn = MiniMap.noteRenderer:GetAddButton()
+    if addBtn then
+        addBtn:SetHandler("OnClicked", function()
+            local count = NoteDatabase:GetNoteCount()
+            if count >= NoteRenderer.MAX_NOTES then
+                ZO_AlertNoSuppression(UI_ALERT_CATEGORY_ALERT, nil, "Maximum notes reached (" .. NoteRenderer.MAX_NOTES .. ")")
+                return
+            end
+            local noteName = "Note " .. (count + 1)
+            MiniMap.noteRenderer:AddNewNote(noteName, "")
+            local noteCount = NoteDatabase:GetNoteCount()
+            MiniMap.noteRenderer:ShowEditor(noteCount)
+        end)
+    end
+
+    local closeBtn = MiniMap.noteRenderer:GetCloseButton()
+    if closeBtn then
+        closeBtn:SetHandler("OnClicked", function()
+            MiniMap.noteRenderer:CloseEditor()
+        end)
+    end
+
+    local prevBtn = MiniMap.noteRenderer:GetPrevButton()
+    if prevBtn then
+        prevBtn:SetHandler("OnClicked", function()
+            MiniMap.noteRenderer:GoToPrevNote()
+        end)
+    end
+
+    local nextBtn = MiniMap.noteRenderer:GetNextButton()
+    if nextBtn then
+        nextBtn:SetHandler("OnClicked", function()
+            MiniMap.noteRenderer:GoToNextNote()
+        end)
+    end
+
+    local deleteBtn = MiniMap.noteRenderer:GetDeleteButton()
+    if deleteBtn then
+        deleteBtn:SetHandler("OnClicked", function()
+            MiniMap.noteRenderer:DeleteCurrentNote()
+            local noteCount = NoteDatabase:GetNoteCount()
+            MiniMap.noteRenderer:ApplyLayout(noteCount)
+            MiniMap.noteRenderer:Update(noteCount)
+        end)
+    end
+
+    local noteItems = MiniMap.noteRenderer:GetNoteItems()
+    if noteItems then
+        for i, item in ipairs(noteItems) do
+            local btn = item.control
+            if btn then
+                btn:SetHandler("OnClicked", function()
+                    if item.index > 0 then
+                        MiniMap.noteRenderer:ShowEditor(item.index)
+                    end
+                end)
+            end
+        end
+    end
+end
+
 local function OnAddOnLoaded(_, addonName)
     if addonName ~= ADDON_NAME then
         return
@@ -1407,6 +1502,7 @@ local function OnAddOnLoaded(_, addonName)
 
     EVENT_MANAGER:UnregisterForEvent(ADDON_NAME, EVENT_ADD_ON_LOADED)
     MiniMap:Initialize()
+    SetupNoteEvents()
 end
 
 EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_ADD_ON_LOADED, OnAddOnLoaded)

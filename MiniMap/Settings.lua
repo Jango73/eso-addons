@@ -12,6 +12,7 @@ DEFAULTS = {
     autoSaveSpots = false,
     autoSaveNpcs = false,
     showToolbar = false,
+    showNotes = true,
 }
 
 CORNERS = {
@@ -74,6 +75,8 @@ STRINGS = {
         refreshRateTooltip = 'How often the minimap updates (in ms).',
         toolbarAddSpot = 'Add %s spot',
         toolbarDeleteSpots = 'Delete spots',
+        showNotesName = 'Show notes',
+        showNotesTooltip = 'Show notes panel below the minimap.',
     },
     fr = {
         helpCorner = '/minimap corner tl|tr|bl|br|left|right|top|bottom',
@@ -123,6 +126,8 @@ STRINGS = {
         refreshRateTooltip = 'Intervalle de rafraichissement de la minimap (en ms).',
         toolbarAddSpot = 'Ajouter un point %s',
         toolbarDeleteSpots = 'Supprimer les points',
+        showNotesName = 'Afficher les notes',
+        showNotesTooltip = 'Afficher le panneau des notes sous la minimap.',
     },
 }
 
