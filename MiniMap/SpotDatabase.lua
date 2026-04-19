@@ -264,8 +264,8 @@ function SpotDatabase:GetSpotCount(category, mapName)
         for zoneName, mapData in pairs(self._data) do
             if type(zoneName) == "string" and type(mapData) == "table" then
                 for k, v in pairs(mapData) do
-                    if k == category then
-                        if type(k) == 'string' and type(v) == 'table' then t = t + #v end
+                    if type(k) == 'string' and type(v) == 'table' and (not category or k == category) then
+                        t = t + #v
                     end
                 end
             end
