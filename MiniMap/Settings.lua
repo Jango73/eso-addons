@@ -9,7 +9,6 @@ DEFAULTS = {
     hidden = false,
     showResourceIndicators = true,
     autoSaveSpots = false,
-    autoSaveNpcs = false,
     showToolbar = false,
     showNotes = false,
 }

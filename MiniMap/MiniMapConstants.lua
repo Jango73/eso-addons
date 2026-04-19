@@ -13,18 +13,15 @@ MINIMAP_LOCATION_PROBE_MS = 1000
 
 MINIMAP_TEXTURE_QUEST = "/esoui/art/compass/quest_icon_assisted.dds"
 MINIMAP_TEXTURE_WAYSHRINE = "/esoui/art/icons/mapkey/mapkey_wayshrine.dds"
-MINIMAP_TEXTURE_NPC = "/esoui/art/icons/mapkey/mapkey_groupmember.dds"
 
 MINIMAP_EDGE_INDICATOR_QUEST = "activeQuest"
 MINIMAP_EDGE_INDICATOR_WAYSHRINE = "wayshrine"
 MINIMAP_EDGE_INDICATOR_ROUTE = "activeRoute"
-MINIMAP_EDGE_INDICATOR_NPC = "npcFind"
 
 MINIMAP_ESO_BORDER_COLOR = { 0.57, 0.56, 0.45, 1 }
 MINIMAP_QUEST_COLOR = { 1, 1, 1, 1 }
 MINIMAP_WAYSHRINE_COLOR = { 1, 1, 1, 1 }
 MINIMAP_ROUTE_COLOR = { 0.25, 0.25, 0.25, 1 }
-MINIMAP_NPC_FIND_COLOR = { 1, 0.2, 0.2, 1 }
 
 MINIMAP_NOTES_PANEL_COLOR = { 0, 0, 0, 0.7 }
 MINIMAP_NOTES_EDITOR_COLOR = { 0, 0, 0, 0.85 }
@@ -50,7 +47,6 @@ MINIMAP_SPOT_TEXTURES = {
     thief_chest = nil,
     water = nil,
     wood = "/esoui/art/icons/mapkey/mapkey_woodworker.dds",
-    npc = "/esoui/art/icons/mapkey/mapkey_groupmember.dds",
 }
 
 MINIMAP_MARKER_TYPE_TEXTURE = "texture"
@@ -70,15 +66,6 @@ MARKER_DEFINITIONS = {
         type = MINIMAP_MARKER_TYPE_TEXTURE,
         texture = MINIMAP_TEXTURE_WAYSHRINE,
         color = MINIMAP_WAYSHRINE_COLOR,
-        sizeFactor = MINIMAP_SIZE_FACTOR_EDGE_INDICATOR,
-        insideSizeFactor = MINIMAP_SIZE_FACTOR_INSIDE_MARKER,
-        hasEdge = true,
-        hasInside = true,
-    },
-    [MINIMAP_EDGE_INDICATOR_NPC] = {
-        type = MINIMAP_MARKER_TYPE_TEXTURE,
-        texture = MINIMAP_TEXTURE_NPC,
-        color = MINIMAP_NPC_FIND_COLOR,
         sizeFactor = MINIMAP_SIZE_FACTOR_EDGE_INDICATOR,
         insideSizeFactor = MINIMAP_SIZE_FACTOR_INSIDE_MARKER,
         hasEdge = true,

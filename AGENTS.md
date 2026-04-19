@@ -1,6 +1,6 @@
 # MiniMap
 
-Elder Scrolls Online minimap addon with resource markers, edge indicators, TSP route, and NPC database.
+Elder Scrolls Online minimap addon with resource markers, edge indicators, TSP route, and notes.
 
 ## Structure
 
@@ -12,10 +12,9 @@ MiniMap/
 ├── Settings.lua          # DEFAULTS, CORNERS, STRINGS
 ├── SpotDatabase.lua      # Spot CRUD (uses RESOURCE_CATEGORIES)
 ├── SpotRenderer.lua      # Renders spots on minimap
-├── NPCDatabase.lua       # NPC management
 ├── RouteManager.lua      # TSP calculation
 ├── RouteRenderer.lua     # Route rendering
-├── IndicatorRenderer.lua # Edge indicators (quest, wayshrine, route, NPC)
+├── IndicatorRenderer.lua # Edge indicators (quest, wayshrine, route)
 └── MiniMap.txt           # Manifest
 ```
 
@@ -36,4 +35,3 @@ MiniMap/
 
 - MiniMapSavedVariables: settings
 - MiniMapSpots: resource spots
-- MiniMapNPCs: NPCs

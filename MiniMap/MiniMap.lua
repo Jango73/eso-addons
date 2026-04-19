@@ -22,7 +22,6 @@ local MiniMap = {
     nextLocationProbeMs = 0,
     nextQuestBreadcrumbRefreshMs = 0,
     isCityMap = false,
-    foundNpc = nil,
 }
 
 local function Print(message)
@@ -86,10 +85,6 @@ end
 
 local function PrintSpotDeleted(count)
     ZO_AlertNoSuppression(UI_ALERT_CATEGORY_ALERT, nil, string.format("%d spot(s) deleted", count))
-end
-
-local function PrintNpcAdded(npcName)
-    ZO_AlertNoSuppression(UI_ALERT_CATEGORY_ALERT, nil, "NPC added: " .. npcName)
 end
 
 local function IsValidCategory(cat)
@@ -311,9 +306,6 @@ function MiniMap:CreateControls()
         [MINIMAP_EDGE_INDICATOR_ROUTE] = function()
             return self.routeRenderer:GetNearestRoutePoint(self.playerMapX, self.playerMapY)
         end,
-        [MINIMAP_EDGE_INDICATOR_NPC] = function()
-            return self:GetFoundNpcPosition()
-        end,
     })
 end
 
@@ -413,13 +405,11 @@ function MiniMap:RegisterSettingsMenu()
             text = self:Text('helpOverview') .. "\n\n"
                 .. self:Text('helpResources') .. "\n\n"
                 .. self:Text('helpRoutes') .. "\n\n"
-                .. self:Text('helpNpcs') .. "\n\n"
                 .. self:Text('helpNotes') .. "\n\n"
                 .. self:Text('helpCommandsTitle') .. "\n"
                 .. self:Text('helpSettings') .. "\n"
                 .. self:Text('helpVisibility') .. "\n"
-                .. self:Text('helpRoute') .. "\n"
-                .. self:Text('helpNpcSearch'),
+                .. self:Text('helpRoute'),
             width = 'full',
         },
         {
@@ -534,19 +524,6 @@ function MiniMap:RegisterSettingsMenu()
                 self.saved.autoSaveSpots = value
             end,
             default = DEFAULTS.autoSaveSpots,
-            width = 'full',
-        },
-        {
-            type = 'checkbox',
-            name = self:Text('autoSaveNpcsName'),
-            tooltip = self:Text('autoSaveNpcsTooltip'),
-            getFunc = function()
-                return self.saved.autoSaveNpcs
-            end,
-            setFunc = function(value)
-                self.saved.autoSaveNpcs = value
-            end,
-            default = DEFAULTS.autoSaveNpcs,
             width = 'full',
         },
         {
@@ -695,17 +672,6 @@ function MiniMap:GetNearestResourceSpot(category)
     end
 
     return nil
-end
-
-function MiniMap:GetFoundNpcPosition()
-    if not self.foundNpc then return nil end
-    local npcData = NPCDatabase:GetNPCByName(self.foundNpc, self.currentMapName)
-    if not npcData then return nil end
-    return npcData.x, npcData.y
-end
-
-function MiniMap:ClearFoundNpc()
-    self.foundNpc = nil
 end
 
 function MiniMap:UpdateMapOverlays(playerX, playerY, mapRotation)
@@ -881,7 +847,6 @@ function MiniMap:ShowHelp()
         "helpOverview",
         "helpResources",
         "helpRoutes",
-        "helpNpcs",
         "helpNotes",
         "helpCommandsTitle",
         "helpSettings",
@@ -893,11 +858,6 @@ function MiniMap:ShowHelp()
         "helpVisibility",
         "helpAdd",
         "helpSpots",
-        "helpFind",
-        "helpNpcSearch",
-        "helpNpcList",
-        "helpNpcHere",
-        "helpNpcClear",
         "helpClear",
         "helpClean",
         "helpPosition",
@@ -917,7 +877,7 @@ function MiniMap:HandleSlashCommand(arguments)
     local command, value = zo_strmatch(arguments or "", "^(%S*)%s*(.*)$")
     command = zo_strlower(command or "")
     
-    if command ~= "clear" and command ~= "npc" then
+    if command ~= "clear" then
         pendingClearConfirm = nil
     end
 
@@ -1070,116 +1030,6 @@ function MiniMap:HandleSlashCommand(arguments)
         else
             Print(self:Text("noRouteActive"))
         end
-    elseif command == "find" then
-        local npcName = nil
-        if value and value ~= "" then
-            if value:sub(1, 1) == '"' then
-                npcName = value:match('^"(.-)"')
-            else
-                npcName = zo_strmatch(value, "^(%S+)")
-            end
-        end
-        if not npcName or npcName == "" then
-            self:ClearFoundNpc()
-            Print(self:Text("npcTargetCleared"))
-            return
-        end
-        local results = NPCDatabase:SearchNPCs(npcName, self.currentMapName)
-        if #results > 0 then
-            local match = results[1]
-            self.foundNpc = match.name
-            if #results > 1 then
-                Print(string.format(self:Text("tracking"), match.name, match.x, match.y, #results))
-            else
-                Print(string.format(self:Text("trackingSingle"), match.name, match.x, match.y))
-            end
-        else
-            self:ClearFoundNpc()
-            local allResults = NPCDatabase:SearchNPCs(npcName)
-            if #allResults > 0 then
-                local zones = {}
-                for _, npc in ipairs(allResults) do
-                    if not zones[npc.map] then
-                        zones[npc.map] = 0
-                    end
-                    zones[npc.map] = zones[npc.map] + 1
-                end
-                local zoneList = {}
-                for zone, count in pairs(zones) do
-                    table.insert(zoneList, zone .. " (" .. count .. ")")
-                end
-                Print(string.format(self:Text("npcNotFoundZone"), table.concat(zoneList, ", ")))
-            else
-                Print(string.format(self:Text("npcNotFound"), npcName))
-            end
-        end
-    elseif command == "npc" then
-        local subCmd, npcQuery = zo_strmatch(value or "", "^(%S+)%s*(.*)$")
-        subCmd = zo_strlower(subCmd or "")
-        
-        if subCmd == "search" or subCmd == "find" then
-            if npcQuery and npcQuery ~= "" then
-                if npcQuery:sub(1, 1) == '"' then
-                    npcQuery = npcQuery:match('^"(.-)"')
-                else
-                    npcQuery = zo_strmatch(npcQuery, "^(%S+)")
-                end
-            end
-            if not npcQuery or npcQuery == "" then
-                Echo(self:Text("usageNpcSearch"))
-                return
-            end
-            local results = NPCDatabase:SearchNPCs(npcQuery)
-            if #results == 0 then
-                Print(string.format(self:Text("noNpcsFound"), npcQuery))
-            else
-                Print(string.format(self:Text("foundNpcs"), #results))
-                for i, npc in ipairs(results) do
-                    if i > 20 then
-                        Print(string.format(self:Text("moreNpcs"), #results - 20))
-                        break
-                    end
-                    Print(string.format(self:Text("npcEntry"), npc.map, npc.name, npc.x, npc.y))
-                end
-            end
-        elseif subCmd == "list" or subCmd == "ls" then
-            local maps = NPCDatabase:GetAllMaps()
-            local mapCount = 0
-            local npcCount = 0
-            for mapName, count in pairs(maps) do
-                mapCount = mapCount + 1
-                npcCount = npcCount + count
-            end
-            Print(string.format(self:Text("npcDatabaseInfo"), mapCount, npcCount))
-            if mapCount > 0 then
-                for mapName, count in pairs(maps) do
-                    Print(string.format(self:Text("npcsInZone"), mapName, count))
-                end
-            end
-        elseif subCmd == "clear" then
-            if pendingClearConfirm == "npc" then
-                NPCDatabase:Clear()
-                Print(self:Text("allNpcsCleared"))
-                pendingClearConfirm = nil
-            else
-                pendingClearConfirm = "npc"
-                Print(self:Text("confirmClearNpcs"))
-            end
-        elseif subCmd == "here" then
-            local npcs = NPCDatabase:GetNPCsByMap(self.currentMapName)
-            local count = 0
-            for _ in pairs(npcs) do count = count + 1 end
-            Print(string.format(self:Text("npcsInMap"), count, self.currentMapName or "unknown"))
-            for name, data in pairs(npcs) do
-                Print(string.format(self:Text("npcDataEntry"), name, data.x, data.y))
-            end
-        else
-            Echo(self:Text("npcCommandsTitle"))
-            Echo("  " .. self:Text("helpNpcSearch"))
-            Echo("  " .. self:Text("helpNpcList"))
-            Echo("  " .. self:Text("helpNpcHere"))
-            Echo("  " .. self:Text("helpNpcClear"))
-        end
     else
         self:ShowHelp()
     end
@@ -1190,9 +1040,6 @@ function MiniMap:Initialize()
 
     self.spots = ZO_SavedVars:NewAccountWide("MiniMapSpots", 1, nil, {})
     SpotDatabase:Init(self.spots)
-
-    self.npcs = ZO_SavedVars:NewAccountWide("MiniMapNPCs", 1, nil, {})
-    NPCDatabase:Init(self.npcs)
 
     self.notes = ZO_SavedVars:NewAccountWide("MiniMapNotes", 1, nil, {})
     NoteDatabase:Init(self.notes)
@@ -1275,22 +1122,6 @@ function MiniMap:Initialize()
 
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_ZONE_CHANGED", EVENT_ZONE_CHANGED, function()
         RefreshMapAfterLocationChange()
-    end)
-
-    EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_CHATTER", EVENT_CHATTER_BEGIN, function()
-        if not MiniMap.saved.autoSaveNpcs then
-            return
-        end
-        local name = GetUnitName("interact")
-        local x, y, heading = GetMapPlayerPosition("player")
-        if name and name ~= "" and x and y then
-            if not NPCDatabase:Exists(name, MiniMap.currentMapName) then
-                NPCDatabase:AddNPC(name, x, y, MiniMap.currentMapName, {})
-                PrintNpcAdded(name)
-            else
-                NPCDatabase:UpdateNPCPosition(name, x, y, MiniMap.currentMapName)
-            end
-        end
     end)
 
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_LOOT_UPDATED", EVENT_LOOT_UPDATED, function()

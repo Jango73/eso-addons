@@ -1,6 +1,6 @@
 # MiniMap
 
-MiniMap is an Elder Scrolls Online addon that adds a compact minimap with resource markers, edge indicators, route guidance, NPC tracking, and notes.
+MiniMap is an Elder Scrolls Online addon that adds a compact minimap with resource markers, edge indicators, route guidance, and notes.
 
 ## Features
 
@@ -8,8 +8,6 @@ MiniMap is an Elder Scrolls Online addon that adds a compact minimap with resour
 - Resource spot markers for gathered and manually added locations.
 - Edge indicators for off-map points of interest.
 - Route calculation across selected resource categories.
-- NPC database populated from interactions.
-- NPC search and tracking on the minimap.
 - Optional notes panel.
 - Configurable size, opacity, position, refresh rate, toolbar, and auto-save behavior.
 - Localized in-game help. English and French are included first.
@@ -65,7 +63,6 @@ Common commands:
 /minimap orientation player
 /minimap route all
 /minimap route clear
-/minimap npc search <name>
 ```
 
 ## Resource Spots
@@ -93,18 +90,6 @@ Routes can be calculated for selected resource categories or for all known resou
 /minimap route clear
 ```
 
-## NPCs
-
-MiniMap can save NPCs when you interact with them, then search and track them later.
-
-```text
-/minimap npc search <name>
-/minimap npc list
-/minimap npc here
-/minimap npc clear
-/minimap find <name>
-```
-
 ## Notes
 
 The notes panel can be enabled or disabled in the settings panel. Notes are stored in the `MiniMapNotes` saved variable.
@@ -120,4 +105,3 @@ scripts/package-addons.sh
 The package is written to `dist/` and keeps the ESO addon folder at the archive root.
 
 See [PUBLISHING.md](PUBLISHING.md) for ESOUI release notes.
-

@@ -6,14 +6,12 @@
 ## DependsOn: LibAddonMenu-2.0
 ## SavedVariables: MiniMapSavedVariables
 ## SavedVariables: MiniMapSpots
-## SavedVariables: MiniMapNPCs
 ## SavedVariables: MiniMapNotes
 
 MiniMapConstants.lua
 MiniMapRenderUtils.lua
 Locale.lua
 SpotDatabase.lua
-NPCDatabase.lua
 NoteDatabase.lua
 Settings.lua
 RouteManager.lua
