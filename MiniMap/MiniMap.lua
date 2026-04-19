@@ -106,6 +106,14 @@ local function IsValidCategory(cat)
     return false
 end
 
+local function GetCategoryList(separator)
+    local categories = {}
+    for _, c in ipairs(RESOURCE_CATEGORIES) do
+        table.insert(categories, c.key)
+    end
+    return table.concat(categories, separator or "|")
+end
+
 local function GetPlayerMapPosition()
     local x, y, _ = GetMapPlayerPosition("player")
     return x, y
@@ -435,6 +443,25 @@ function MiniMap:RegisterSettingsMenu()
     }
 
     local optionsTable = {
+        {
+            type = 'header',
+            name = self:Text('helpHeader'),
+            width = 'full',
+        },
+        {
+            type = 'description',
+            text = self:Text('helpOverview') .. "\n\n"
+                .. self:Text('helpResources') .. "\n\n"
+                .. self:Text('helpRoutes') .. "\n\n"
+                .. self:Text('helpNpcs') .. "\n\n"
+                .. self:Text('helpNotes') .. "\n\n"
+                .. self:Text('helpCommandsTitle') .. "\n"
+                .. self:Text('helpSettings') .. "\n"
+                .. self:Text('helpVisibility') .. "\n"
+                .. self:Text('helpRoute') .. "\n"
+                .. self:Text('helpNpcSearch'),
+            width = 'full',
+        },
         {
             type = 'dropdown',
             name = self:Text('orientationName'),
@@ -958,25 +985,40 @@ function MiniMap:UpdatePlayer()
 end
 
 function MiniMap:ShowHelp()
-    Echo(self:Text("helpCorner"))
-    Echo(self:Text("helpSize"))
-    Echo(self:Text("helpOrientation"))
-    Echo(self:Text("helpOpacity"))
-    Echo(self:Text("helpZoom"))
-    Echo(self:Text("helpVisibility"))
-    Echo("/minimap add <category>")
-    Echo("/minimap spots")
-    Echo("/minimap find <name>")
-    Echo("/minimap npc search <name>")
-    Echo("/minimap npc list")
-    Echo("/minimap npc clear")
-    Echo("/minimap clear <category>|all")
-    Echo("/minimap log clear")
-    Echo("/minimap clean")
-    Echo("/minimap pos")
-    Echo("/minimap route <category1 category2 ...>|all")
-    Echo("/minimap route clear")
-    Echo("/minimap route info")
+    local helpLines = {
+        "helpHeader",
+        "helpOverview",
+        "helpResources",
+        "helpRoutes",
+        "helpNpcs",
+        "helpNotes",
+        "helpCommandsTitle",
+        "helpSettings",
+        "helpCorner",
+        "helpSize",
+        "helpOrientation",
+        "helpOpacity",
+        "helpZoom",
+        "helpVisibility",
+        "helpAdd",
+        "helpSpots",
+        "helpFind",
+        "helpNpcSearch",
+        "helpNpcList",
+        "helpNpcHere",
+        "helpNpcClear",
+        "helpClear",
+        "helpLogClear",
+        "helpClean",
+        "helpPosition",
+        "helpRoute",
+        "helpRouteClear",
+        "helpRouteInfo",
+    }
+
+    for _, key in ipairs(helpLines) do
+        Echo(self:Text(key))
+    end
 end
 
 local pendingClearConfirm = nil
@@ -1054,11 +1096,7 @@ function MiniMap:HandleSlashCommand(arguments)
         if IsValidCategory(value) then
             AddSpotAtPlayer(value)
         else
-            local valid = ""
-            for _, c in ipairs(RESOURCE_CATEGORIES) do
-                valid = valid .. c.key .. "|"
-            end
-            Echo("Usage: /minimap add " .. valid:sub(1, -2))
+            Echo(string.format(self:Text("usageAdd"), GetCategoryList("|")))
         end
     elseif command == "spots" then
         local total = SpotDatabase:GetSpotCount()
@@ -1083,7 +1121,7 @@ function MiniMap:HandleSlashCommand(arguments)
             pendingClearConfirm = nil
             Print(self:Text("clearCancelled"))
         else
-            Echo("Usage: /minimap clear <category>|all|cancel")
+            Echo(self:Text("usageClear"))
         end
     elseif command == "log" then
         if value == "clear" then
@@ -1136,8 +1174,8 @@ function MiniMap:HandleSlashCommand(arguments)
         end
 
         if #categories == 0 then
-            Echo("Usage: /minimap route <category1 category2 ...>|all")
-            Echo("Available: all book chest home jewelry ore plant rune shard silk thief_chest water wood")
+            Echo(self:Text("usageRoute"))
+            Echo(string.format(self:Text("usageRouteAvailable"), "all " .. GetCategoryList(" ")))
             return
         end
 
@@ -1214,7 +1252,7 @@ function MiniMap:HandleSlashCommand(arguments)
                 end
             end
             if not npcQuery or npcQuery == "" then
-                Echo("Usage: /minimap npc search <name>")
+                Echo(self:Text("usageNpcSearch"))
                 return
             end
             local results = NPCDatabase:SearchNPCs(npcQuery)
@@ -1262,11 +1300,11 @@ function MiniMap:HandleSlashCommand(arguments)
                 Print(string.format(self:Text("npcDataEntry"), name, data.x, data.y))
             end
         else
-            Echo("NPC commands:")
-            Echo("  /minimap npc search <name>")
-            Echo("  /minimap npc list")
-            Echo("  /minimap npc here")
-            Echo("  /minimap npc clear")
+            Echo(self:Text("npcCommandsTitle"))
+            Echo("  " .. self:Text("helpNpcSearch"))
+            Echo("  " .. self:Text("helpNpcList"))
+            Echo("  " .. self:Text("helpNpcHere"))
+            Echo("  " .. self:Text("helpNpcClear"))
         end
     else
         self:ShowHelp()
