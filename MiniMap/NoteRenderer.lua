@@ -214,7 +214,7 @@ function NoteRenderer:CreateEditor()
         self:CloseEditor()
     end)
 
-    local btnWidth = 80
+    local btnWidth = 60
     local btnHeight = 28
     local btnSpacing = 10
 
