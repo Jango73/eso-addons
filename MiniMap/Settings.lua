@@ -12,7 +12,7 @@ DEFAULTS = {
     autoSaveSpots = false,
     autoSaveNpcs = false,
     showToolbar = false,
-    showNotes = true,
+    showNotes = false,
 }
 
 CORNERS = {
@@ -23,5 +23,5 @@ CORNERS = {
     left = { anchor = LEFT, relative = LEFT, x = 24, y = 0 },
     right = { anchor = RIGHT, relative = RIGHT, x = -24, y = 0 },
     top = { anchor = TOP, relative = TOP, x = 0, y = 24 },
-bottom = { anchor = BOTTOM, relative = BOTTOM, x = 0, y = -24 },
+    bottom = { anchor = BOTTOM, relative = BOTTOM, x = 0, y = -24 },
 }
