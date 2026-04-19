@@ -5,3 +5,5 @@ LibAddonMenu-2.0/
 temp/
 MiniMap/temp/
 dist/
+__pycache__/
+*.py[cod]

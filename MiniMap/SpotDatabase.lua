@@ -1,6 +1,8 @@
 
 SpotDatabase = {
     _data = nil,
+    _builtinData = nil,
+    _mergedCache = nil,
 }
 SpotDatabase.__index = SpotDatabase
 
@@ -25,6 +27,8 @@ function SpotDatabase:Init(savedVars)
         self._metadata["data"] = {}
     end
     self._data = self._metadata["data"]
+    self._builtinData = (MiniMapDefaultSpots and MiniMapDefaultSpots["data"]) or {}
+    self._mergedCache = {}
 end
 
 local function Echo(message)
@@ -38,6 +42,62 @@ local function IsDuplicate(s1, s2)
     local dx = s1.x - s2.x
     local dy = s1.y - s2.y
     return (dx * dx + dy * dy) <= (MINIMAP_SPOT_DUPLICATE_THRESHOLD * MINIMAP_SPOT_DUPLICATE_THRESHOLD)
+end
+
+local function AppendUniqueSpots(target, source)
+    if type(source) ~= "table" then
+        return
+    end
+
+    for _, spot in ipairs(source) do
+        if type(spot) == "table" and spot.x and spot.y then
+            local duplicate = false
+            for _, existing in ipairs(target) do
+                if IsDuplicate(existing, spot) then
+                    duplicate = true
+                    break
+                end
+            end
+            if not duplicate then
+                table.insert(target, spot)
+            end
+        end
+    end
+end
+
+local function AppendMapData(target, source)
+    if type(source) ~= "table" then
+        return
+    end
+
+    for category, spots in pairs(source) do
+        if type(category) == "string" and type(spots) == "table" then
+            if not target[category] then
+                target[category] = {}
+            end
+            AppendUniqueSpots(target[category], spots)
+        end
+    end
+end
+
+function SpotDatabase:InvalidateMergedCache(mapName)
+    if not self._mergedCache then
+        return
+    end
+    if mapName then
+        self._mergedCache[mapName] = nil
+    else
+        self._mergedCache = {}
+    end
+end
+
+function SpotDatabase:GetBuiltinSpots(category, mapName)
+    if not category then return {} end
+    local currentMap = mapName or GetMapName()
+    if not self._builtinData or not self._builtinData[currentMap] then
+        return {}
+    end
+    return self._builtinData[currentMap][category] or {}
 end
 
 function SpotDatabase:AddSpot(x, y, category, mapName)
@@ -54,14 +114,23 @@ function SpotDatabase:AddSpot(x, y, category, mapName)
         self._data[currentMap][category] = {}
     end
 
+    local candidate = { x = x, y = y }
     for i, s in ipairs(self._data[currentMap][category]) do
-        if IsDuplicate(s, {x = x, y = y}) then
+        if IsDuplicate(s, candidate) then
             self._data[currentMap][category][i] = { x = x, y = y, ts = GetTimeStamp() }
+            self:InvalidateMergedCache(currentMap)
+            return true, false
+        end
+    end
+
+    for _, s in ipairs(self:GetBuiltinSpots(category, currentMap)) do
+        if IsDuplicate(s, candidate) then
             return true, false
         end
     end
 
     table.insert(self._data[currentMap][category], { x = x, y = y, ts = GetTimeStamp() })
+    self:InvalidateMergedCache(currentMap)
     return true, true
 end
 
@@ -98,6 +167,7 @@ function SpotDatabase:CleanDuplicates()
                             end
                         end
                         self._data[zoneName][category] = newList
+                        self:InvalidateMergedCache(zoneName)
                     end
                 end
             end
@@ -112,14 +182,7 @@ function SpotDatabase:GetNearestSpot(px, py, category, maxCount, mapName)
     maxCount = maxCount or 1
     local currentMap = mapName or GetMapName()
 
-    if not self._data[currentMap] then
-        return nil
-    end
-
-    local spots = self._data[currentMap][category]
-    if not spots then
-        return nil
-    end
+    local spots = self:GetSpots(category, currentMap)
 
     local best = nil
     local bestDistSq = nil
@@ -144,12 +207,9 @@ function SpotDatabase:GetNearestSpotByCategory(px, py, maxCount, mapName)
     maxCount = maxCount or 1
     local currentMap = mapName or GetMapName()
     local results = {}
+    local mapData = self:GetSpotsByMap(currentMap)
 
-    if not self._data[currentMap] then
-        return results
-    end
-
-    for cat, _ in pairs(self._data[currentMap]) do
+    for cat, _ in pairs(mapData) do
         if type(cat) == 'string' then
             local nearest = self:GetNearestSpot(px, py, cat, 1, currentMap)
             if nearest then table.insert(results, nearest) end
@@ -164,9 +224,11 @@ function SpotDatabase:Clear(zoneName, category)
         if category then
             if self._data[zoneName] then
                 self._data[zoneName][category] = {}
+                self:InvalidateMergedCache(zoneName)
             end
         else
             self._data[zoneName] = {}
+            self:InvalidateMergedCache(zoneName)
         end
     else
         for k in pairs(self._data) do
@@ -174,6 +236,7 @@ function SpotDatabase:Clear(zoneName, category)
                 self._data[k] = {}
             end
         end
+        self:InvalidateMergedCache()
     end
 end
 
@@ -204,6 +267,7 @@ function SpotDatabase:RemoveSpotsInRadius(x, y, radius, category, mapName)
                 end
             end
             self._data[mapName][category] = newSpots
+            self:InvalidateMergedCache(mapName)
         end
     else
         for catKey, spots in pairs(self._data[mapName]) do
@@ -222,6 +286,7 @@ function SpotDatabase:RemoveSpotsInRadius(x, y, radius, category, mapName)
                 self._data[mapName][catKey] = newSpots
             end
         end
+        self:InvalidateMergedCache(mapName)
     end
 
     return removed, total
@@ -230,29 +295,36 @@ end
 function SpotDatabase:GetSpots(category, mapName)
     if not category then return {} end
     local currentMap = mapName or GetMapName()
-    if not self._data[currentMap] then
-        return {}
-    end
-    return self._data[currentMap][category] or {}
+    local mapData = self:GetSpotsByMap(currentMap)
+    return mapData[category] or {}
 end
 
 function SpotDatabase:GetSpotsByMap(mapName)
     local currentMap = mapName or GetMapName()
-    if not self._data[currentMap] then
-        return {}
+    if self._mergedCache and self._mergedCache[currentMap] then
+        return self._mergedCache[currentMap]
     end
-    return self._data[currentMap]
+
+    local merged = {}
+    if self._data then
+        AppendMapData(merged, self._data[currentMap])
+    end
+    if self._builtinData then
+        AppendMapData(merged, self._builtinData[currentMap])
+    end
+
+    if self._mergedCache then
+        self._mergedCache[currentMap] = merged
+    end
+    return merged
 end
 
 function SpotDatabase:GetSpotCount(category, mapName)
     if mapName then
         if category then
-            local mapData = self._data[mapName]
-            if not mapData then return 0 end
-            return #(mapData[category] or {})
+            return #self:GetSpots(category, mapName)
         else
-            local mapData = self._data[mapName]
-            if not mapData then return 0 end
+            local mapData = self:GetSpotsByMap(mapName)
             local t = 0
             for k, v in pairs(mapData) do
                 if type(k) == 'string' and type(v) == 'table' then t = t + #v end
@@ -261,12 +333,11 @@ function SpotDatabase:GetSpotCount(category, mapName)
         end
     else
         local t = 0
-        for zoneName, mapData in pairs(self._data) do
-            if type(zoneName) == "string" and type(mapData) == "table" then
-                for k, v in pairs(mapData) do
-                    if type(k) == 'string' and type(v) == 'table' and (not category or k == category) then
-                        t = t + #v
-                    end
+        for zoneName in pairs(self:GetAllMaps()) do
+            local mapData = self:GetSpotsByMap(zoneName)
+            for k, v in pairs(mapData) do
+                if type(k) == 'string' and type(v) == 'table' and (not category or k == category) then
+                    t = t + #v
                 end
             end
         end
@@ -276,7 +347,12 @@ end
 
 function SpotDatabase:GetAllMaps()
     local maps = {}
-    for mapName, mapData in pairs(self._data) do
+    for mapName, mapData in pairs(self._data or {}) do
+        if type(mapName) == "string" and type(mapData) == "table" then
+            maps[mapName] = true
+        end
+    end
+    for mapName, mapData in pairs(self._builtinData or {}) do
         if type(mapName) == "string" and type(mapData) == "table" then
             maps[mapName] = true
         end

@@ -79,6 +79,16 @@ Useful commands:
 /minimap clean
 ```
 
+## Bundled Spot Data
+
+The addon can ship with default spot data in `MiniMap/MiniMapData.lua`. To merge spots from an exported `MiniMapSpots` saved-variable file into that bundled data table, run:
+
+```bash
+scripts/import-default-spots.sh source.lua
+```
+
+This is a merge, not a replacement. Existing bundled spots are kept, source spots are added only when they are not duplicates, and duplicate detection uses the addon threshold `MINIMAP_SPOT_DUPLICATE_THRESHOLD`.
+
 ## Routes
 
 Routes can be calculated for selected resource categories or for all known resource spots in the current map.
