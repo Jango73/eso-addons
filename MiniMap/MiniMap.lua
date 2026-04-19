@@ -29,13 +29,6 @@ local function Print(message)
     if d then
         d("|c80d0ffMiniMap|r " .. message)
     end
-    if not MiniMap.debugLog then
-        MiniMap.debugLog = {}
-    end
-    table.insert(MiniMap.debugLog, message)
-    if #MiniMap.debugLog > 50 then
-        table.remove(MiniMap.debugLog, 1)
-    end
 end
 
 local function Echo(message)
@@ -171,32 +164,11 @@ function MiniMap:CreateControls()
     player:SetTexture("EsoUI/Art/Icons/mapKey/mapKey_player.dds")
     player:SetDrawLayer(DL_OVERLAY)
 
-    local debugWindow = WINDOW_MANAGER:CreateTopLevelWindow("MiniMapDebugWindow")
-    debugWindow:SetDrawTier(DT_HIGH)
-    debugWindow:SetMouseEnabled(false)
-    debugWindow:SetHidden(true)
-
-    local debugBackground = WINDOW_MANAGER:CreateControl("MiniMapDebugBackground", debugWindow, CT_BACKDROP)
-    debugBackground:SetAnchorFill(debugWindow)
-    debugBackground:SetCenterColor(0, 0, 0, 0.78)
-    debugBackground:SetEdgeColor(1, 1, 1, 0.6)
-    debugBackground:SetEdgeTexture("", 1, 1, 1)
-
-    local debugLabel = WINDOW_MANAGER:CreateControl("MiniMapDebugLabel", debugWindow, CT_LABEL)
-    debugLabel:SetAnchor(TOPLEFT, debugWindow, TOPLEFT, 8, 8)
-    debugLabel:SetFont("ZoFontGame")
-    debugLabel:SetColor(1, 1, 1, 1)
-    debugLabel:SetHorizontalAlignment(TEXT_ALIGN_LEFT)
-    debugLabel:SetVerticalAlignment(TEXT_ALIGN_TOP)
-
     self.root = root
     self.background = background
     self.map = map
     self.border = border
     self.player = player
-    self.debugWindow = debugWindow
-    self.debugBackground = debugBackground
-    self.debugLabel = debugLabel
 
     local toolbar = WINDOW_MANAGER:CreateTopLevelWindow("MiniMapToolbar")
     toolbar:SetDrawTier(DT_HIGH)
@@ -360,7 +332,6 @@ function MiniMap:ApplyLayout()
     self.border:SetDimensions(self.size, self.size)
     self.map:SetDimensions(self.mapSize, self.mapSize)
     self.root:SetAlpha(MiniMapRenderUtils.Clamp(self.saved.opacity or DEFAULTS.opacity, 20, 100) / 100)
-    self:ApplyDebugLayout()
     self:ApplyCircularClip()
 
     local playerSize = MiniMapRenderUtils.Clamp(math.floor(self.size * MINIMAP_SIZE_FACTOR_PLAYER), 18, 30)
@@ -387,17 +358,6 @@ function MiniMap:ApplyLayout()
         self.noteRenderer:ApplyLayout(noteCount)
         self.noteRenderer:Update(noteCount)
     end
-end
-
-function MiniMap:ApplyDebugLayout()
-    if not self.debugWindow then
-        return
-    end
-
-    self.debugWindow:ClearAnchors()
-    self.debugWindow:SetAnchor(TOPRIGHT, self.root, BOTTOMRIGHT, 0, 12)
-    self.debugWindow:SetDimensions(760, 260)
-    self.debugLabel:SetDimensions(744, 244)
 end
 
 function MiniMap:ApplyCircularClip()
@@ -623,49 +583,6 @@ function MiniMap:RegisterSettingsMenu()
     LAM:RegisterOptionControls('MiniMapSettings', optionsTable)
 end
 
-function MiniMap:SetQuestDebug(values)
-    self.questDebug = values
-    self:UpdateDebugLabel()
-end
-
-function MiniMap:UpdateDebugLabel()
-    if not self.debugWindow or not self.debugLabel then
-        return
-    end
-
-    if not self.saved or not self.saved.debug then
-        self.debugWindow:SetHidden(true)
-        return
-    end
-
-    local debug = self.questDebug or {}
-    local spotInfo = ""
-    ForEachCategory(function(cat)
-        spotInfo = spotInfo .. string.format("%s=%d ", cat.key, SpotDatabase:GetSpotCount(cat.key))
-    end)
-
-    local routeInfo = ""
-    if self.routeManager:IsRouteActive() then
-        local route = self.routeManager:GetRoute()
-        local segments = self.routeManager:GetRouteSegments()
-        routeInfo = "\nRoute: " .. tostring(#route) .. " spots, " .. tostring(#segments) .. " segs"
-    end
-
-    local text = string.format(
-        "MiniMap debug\nSpots: %s\nmap=%s\nquest=%s\nplayer=%.4f,%.4f target=%s%s",
-        spotInfo,
-        tostring(self.currentMapName or ""),
-        tostring(debug.questIndex or "nil"),
-        debug.playerX or 0,
-        debug.playerY or 0,
-        debug.target and string.format("%.4f,%.4f", debug.targetX, debug.targetY) or "nil",
-        routeInfo
-    )
-
-    self.debugLabel:SetText(text)
-    self.debugWindow:SetHidden(false)
-end
-
 function MiniMap:GetFocusedQuestIndex()
     if QUEST_JOURNAL_MANAGER and QUEST_JOURNAL_MANAGER.GetFocusedQuestIndex then
         local questIndex = QUEST_JOURNAL_MANAGER:GetFocusedQuestIndex()
@@ -689,20 +606,7 @@ end
 
 function MiniMap:GetActiveQuestTargetPosition()
     local questIndex = self:GetFocusedQuestIndex()
-    local debug = {
-        questIndex = questIndex,
-        hasBreadcrumbs = WORLD_MAP_QUEST_BREADCRUMBS ~= nil,
-        playerX = self.playerMapX or 0,
-        playerY = self.playerMapY or 0,
-        steps = 0,
-        positions = 0,
-        inside = 0,
-        refreshed = false,
-        target = false,
-    }
-
     if not questIndex or not WORLD_MAP_QUEST_BREADCRUMBS or not self.playerMapX or not self.playerMapY then
-        self:SetQuestDebug(debug)
         return nil
     end
 
@@ -710,16 +614,13 @@ function MiniMap:GetActiveQuestTargetPosition()
     local bestDistanceSq
     local mainStepIndex = QUEST_MAIN_STEP_INDEX or 1
     local numSteps = GetJournalQuestNumSteps and GetJournalQuestNumSteps(questIndex) or mainStepIndex
-    debug.steps = numSteps
 
     for stepIndex = mainStepIndex, numSteps do
         local numPositions = WORLD_MAP_QUEST_BREADCRUMBS:GetNumQuestConditionPositions(questIndex, stepIndex)
         if numPositions then
-            debug.positions = debug.positions + numPositions
             for conditionIndex = 1, numPositions do
                 local positionData = WORLD_MAP_QUEST_BREADCRUMBS:GetQuestConditionPosition(questIndex, stepIndex, conditionIndex)
                 if positionData and positionData.insideCurrentMapWorld and positionData.xLoc and positionData.yLoc then
-                    debug.inside = debug.inside + 1
                     local dx = positionData.xLoc - self.playerMapX
                     local dy = positionData.yLoc - self.playerMapY
                     local distanceSq = (dx * dx) + (dy * dy)
@@ -734,10 +635,6 @@ function MiniMap:GetActiveQuestTargetPosition()
     end
 
     if bestX and bestY then
-        debug.target = true
-        debug.targetX = bestX
-        debug.targetY = bestY
-        self:SetQuestDebug(debug)
         return bestX, bestY
     end
 
@@ -745,10 +642,8 @@ function MiniMap:GetActiveQuestTargetPosition()
     if WORLD_MAP_QUEST_BREADCRUMBS.RefreshQuest and now >= self.nextQuestBreadcrumbRefreshMs then
         self.nextQuestBreadcrumbRefreshMs = now + 3000
         WORLD_MAP_QUEST_BREADCRUMBS:RefreshQuest(questIndex)
-        debug.refreshed = true
     end
 
-    self:SetQuestDebug(debug)
     return nil
 end
 
@@ -820,10 +715,6 @@ function MiniMap:UpdateMapOverlays(playerX, playerY, mapRotation)
 
     self.spotRenderer:Update(playerX, playerY, mapRotation, center, radius, margin, self.currentMapName)
     self.routeRenderer:Update(playerX, playerY, mapRotation, center, radius, self.currentMapName)
-    if self.saved.debug then
-        self.questDebug = self.questDebug or {}
-        self.questDebug.route = self.routeRenderer:GetDebugText()
-    end
 
     self.indicatorRenderer:Update(playerX, playerY, mapRotation, center, radius, margin)
 end
@@ -1008,7 +899,6 @@ function MiniMap:ShowHelp()
         "helpNpcHere",
         "helpNpcClear",
         "helpClear",
-        "helpLogClear",
         "helpClean",
         "helpPosition",
         "helpRoute",
@@ -1088,10 +978,6 @@ function MiniMap:HandleSlashCommand(arguments)
         self.saved.hidden = false
         self:UpdatePlayer()
         Print(self:Text("shown"))
-    elseif command == "debug" then
-        self.saved.debug = not self.saved.debug
-        self:UpdateDebugLabel()
-        Print("Debug: " .. tostring(self.saved.debug))
     elseif command == "add" then
         if IsValidCategory(value) then
             AddSpotAtPlayer(value)
@@ -1122,18 +1008,6 @@ function MiniMap:HandleSlashCommand(arguments)
             Print(self:Text("clearCancelled"))
         else
             Echo(self:Text("usageClear"))
-        end
-    elseif command == "log" then
-        if value == "clear" then
-            MiniMap.debugLog = {}
-            Print(self:Text("debugLogCleared"))
-        elseif not MiniMap.debugLog or #MiniMap.debugLog == 0 then
-            Print(self:Text("noDebugLog"))
-            return
-        else
-            for i, msg in ipairs(MiniMap.debugLog) do
-                d("[" .. i .. "] " .. msg)
-            end
         end
     elseif command == "clean" then
         local removed = SpotDatabase:CleanDuplicates(true)

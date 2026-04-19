@@ -7,7 +7,6 @@ function RouteRenderer:Init(owner, routeManager)
     self.routeManager = routeManager
     self.segments = {}
     self.initialized = false
-    self.debugText = ""
 end
 
 function RouteRenderer:EnsureInitialized()
@@ -44,7 +43,6 @@ function RouteRenderer:Update(playerX, playerY, mapRotation, center, radius, cur
 
     self.routeManager:RecalculateIfNeeded(playerX, playerY, currentMapName)
     local segments = self.routeManager:GetRouteSegments()
-    self.debugText = "RouteSegs=" .. tostring(#segments)
 
     for i, segment in ipairs(segments) do
         local control = self.segments[i]
@@ -72,8 +70,6 @@ function RouteRenderer:Update(playerX, playerY, mapRotation, center, radius, cur
             local unitY = dy / length
             angle = MiniMapRenderUtils.GetRotationFromUp(unitX, unitY) + math.pi / 2
         end
-
-        self.debugText = self.debugText .. " l" .. i .. "=" .. string.format("%.0f", length)
 
         if length > 3 then
             local midX = (localX1 + localX2) / 2
@@ -137,8 +133,4 @@ function RouteRenderer:GetNearestRoutePoint(playerX, playerY)
     end
 
     return nearestX, nearestY
-end
-
-function RouteRenderer:GetDebugText()
-    return self.debugText
 end

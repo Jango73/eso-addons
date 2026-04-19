@@ -6,7 +6,6 @@ DEFAULTS = {
     zoom = 6,
     opacity = 100,
     refreshRate = 50,
-    debug = false,
     hidden = false,
     showResourceIndicators = true,
     autoSaveSpots = false,
