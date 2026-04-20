@@ -2,7 +2,7 @@
 ## Author: Jango73
 ## APIVersion: 101049
 ## Version: 1.0.0
-## AddOnVersion: 1
+## AddOnVersion: 10000
 ## DependsOn: LibAddonMenu-2.0
 ## SavedVariables: MiniMapSavedVariables
 ## SavedVariables: MiniMapSpots
