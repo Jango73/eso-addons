@@ -341,9 +341,7 @@ function MiniMap:ApplyLayout()
     self:LayoutTiles()
     self:UpdatePlayer()
 
-    if self.toolbar then
-        self.toolbar:SetHidden(not self.saved.showToolbar)
-    end
+    self:UpdateToolbarVisibility()
 
     if self.noteRenderer then
         local noteCount = NoteDatabase:GetNoteCount()
@@ -370,6 +368,42 @@ function MiniMap:ApplyToolbarLayout()
 
     self.toolbar:ClearAnchors()
     self.toolbar:SetAnchor(BOTTOM, GuiRoot, BOTTOM, 0, -84)
+end
+
+function MiniMap:IsHudShowing()
+    if not SCENE_MANAGER or not SCENE_MANAGER.GetScene then
+        return true
+    end
+
+    local hudScene = SCENE_MANAGER:GetScene("hud")
+    local huduiScene = SCENE_MANAGER:GetScene("hudui")
+    local hudShown = hudScene and hudScene.IsShowing and hudScene:IsShowing()
+    local huduiShown = huduiScene and huduiScene.IsShowing and huduiScene:IsShowing()
+    return hudShown or huduiShown
+end
+
+function MiniMap:UpdateToolbarVisibility(isHudShowing)
+    if not self.toolbar then
+        return
+    end
+
+    local now = GetFrameTimeMilliseconds and GetFrameTimeMilliseconds() or 0
+    isHudShowing = (isHudShowing ~= false)
+    local isPointerMode = IsGameCameraUIModeActive and IsGameCameraUIModeActive()
+    local wantsVisible = self.saved.showToolbar and isPointerMode and isHudShowing and not self.saved.hidden
+
+    if not wantsVisible then
+        self.toolbarVisibleSinceMs = nil
+        self.toolbar:SetHidden(true)
+        return
+    end
+
+    self.toolbarVisibleSinceMs = self.toolbarVisibleSinceMs or now
+    if now - self.toolbarVisibleSinceMs >= 150 then
+        self.toolbar:SetHidden(false)
+    else
+        self.toolbar:SetHidden(true)
+    end
 end
 
 function MiniMap:Text(key)
@@ -536,6 +570,7 @@ function MiniMap:RegisterSettingsMenu()
             setFunc = function(value)
                 self.saved.showToolbar = value
                 self:ApplyToolbarLayout()
+                self:UpdateToolbarVisibility()
             end,
             default = DEFAULTS.showToolbar,
             width = 'full',
@@ -938,6 +973,7 @@ function MiniMap:HandleSlashCommand(arguments)
     elseif command == "hide" or command == "masquer" then
         self.saved.hidden = true
         self.root:SetHidden(true)
+        self:UpdateToolbarVisibility(false)
         Print(self:Text("hidden"))
     elseif command == "show" or command == "afficher" then
         self.saved.hidden = false
@@ -1085,20 +1121,13 @@ function MiniMap:Initialize()
 
         if sceneShown then
             MiniMap.root:SetHidden(true)
-            if MiniMap.toolbar then MiniMap.toolbar:SetHidden(true) end
+            MiniMap:UpdateToolbarVisibility(false)
             if MiniMap.noteRenderer then MiniMap.noteRenderer:CloseEditor() end
             if MiniMap.noteRenderer and MiniMap.noteRenderer.notesPanel then MiniMap.noteRenderer.notesPanel:SetHidden(true) end
             lastMapOpen = true
         elseif not MiniMap.saved.hidden then
-            local isHudShowing = true
-            if SCENE_MANAGER and SCENE_MANAGER.GetScene then
-                local hudScene = SCENE_MANAGER:GetScene("hud")
-                local huduiScene = SCENE_MANAGER:GetScene("hudui")
-                isHudShowing = (hudScene and hudScene.state and hudScene.state ~= "hidden") or (huduiScene and huduiScene.state and huduiScene.state ~= "hidden")
-            end
-            local isPointerMode = IsGameCameraUIModeActive and IsGameCameraUIModeActive()
-            local toolbarVisible = MiniMap.saved.showToolbar and isPointerMode and isHudShowing
-            if MiniMap.toolbar then MiniMap.toolbar:SetHidden(not toolbarVisible) end
+            local isHudShowing = MiniMap:IsHudShowing()
+            MiniMap:UpdateToolbarVisibility(isHudShowing)
             MiniMap.root:SetHidden(not isHudShowing)
             if MiniMap.noteRenderer and MiniMap.noteRenderer.notesPanel then
                 local notesVisible = MiniMap.saved.showNotes and isHudShowing
