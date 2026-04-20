@@ -515,6 +515,23 @@ function MiniMap:RegisterSettingsMenu()
         },
         {
             type = 'slider',
+            name = self:Text('zoomName'),
+            tooltip = self:Text('zoomTooltip'),
+            min = 2,
+            max = 16,
+            step = 1,
+            getFunc = function()
+                return self.saved.zoom or DEFAULTS.zoom
+            end,
+            setFunc = function(value)
+                self.saved.zoom = MiniMapRenderUtils.Clamp(value, 2, 16)
+                self:UpdateMap()
+            end,
+            default = DEFAULTS.zoom,
+            width = 'full',
+        },
+        {
+            type = 'slider',
             name = self:Text('opacityName'),
             tooltip = self:Text('opacityTooltip'),
             min = 20,
