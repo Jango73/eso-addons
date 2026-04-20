@@ -30,6 +30,7 @@ fi
 
 "$ROOT_DIR/scripts/merge_spots.py" \
     --no-backup \
+    --clear-source \
     --target-var MiniMapDefaultSpots \
     "$SOURCE_FILE" \
     "$TARGET_FILE"

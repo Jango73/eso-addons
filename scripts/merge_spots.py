@@ -9,6 +9,7 @@ The target file is updated in place. A .bak copy is written by default.
 Duplicate spots are detected with the same threshold as the addon:
 MINIMAP_SPOT_DUPLICATE_THRESHOLD = 0.0005.
 When a duplicate is found, the target spot is kept.
+With --clear-source, source spot data tables are emptied after a successful merge.
 """
 
 from __future__ import annotations
@@ -402,6 +403,15 @@ def add_stats(total: dict[str, int], partial: dict[str, int]) -> None:
         total[key] = total.get(key, 0) + value
 
 
+def clear_data_tables(tables: list[tuple[tuple[Any, ...], OrderedDict[Any, Any]]]) -> int:
+    cleared = 0
+    for _path, table in tables:
+        if table:
+            table.clear()
+            cleared += 1
+    return cleared
+
+
 def select_merge_pairs(
     source_tables: list[tuple[tuple[Any, ...], OrderedDict[Any, Any]]],
     target_tables: list[tuple[tuple[Any, ...], OrderedDict[Any, Any]]],
@@ -465,16 +475,24 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="parse and merge in memory, but do not write the target file",
     )
+    parser.add_argument(
+        "--clear-source",
+        action="store_true",
+        help="empty source spot data tables after a successful merge",
+    )
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
 
+    if args.clear_source and args.source.resolve() == args.target.resolve():
+        raise LuaParseError("--clear-source cannot be used when source and target are the same file")
+
     source_text = args.source.read_text(encoding="utf-8")
     target_text = args.target.read_text(encoding="utf-8")
 
-    _source_start, _source_end, source_spots = find_lua_assignment(source_text, args.source_var)
+    source_start, source_end, source_spots = find_lua_assignment(source_text, args.source_var)
     target_start, target_end, target_spots = find_lua_assignment(target_text, args.target_var)
 
     source_tables = collect_data_tables(source_spots)
@@ -491,22 +509,29 @@ def main() -> int:
         "invalid": 0,
         "maps": 0,
         "categories": 0,
+        "cleared_source_tables": 0,
     }
 
     for source_table, target_table, _source_path, _target_path in select_merge_pairs(source_tables, target_tables):
         add_stats(stats, merge_map_data(source_table, target_table))
+
+    if args.clear_source:
+        stats["cleared_source_tables"] = clear_data_tables(source_tables)
 
     if not args.dry_run:
         if not args.no_backup:
             shutil.copy2(args.target, args.target.with_suffix(args.target.suffix + ".bak"))
         merged_text = target_text[:target_start] + to_lua(target_spots, 0) + target_text[target_end:]
         args.target.write_text(merged_text, encoding="utf-8")
+        if args.clear_source:
+            source_text = source_text[:source_start] + to_lua(source_spots, 0) + source_text[source_end:]
+            args.source.write_text(source_text, encoding="utf-8")
 
     mode = "dry-run" if args.dry_run else "written"
     print(
         f"{mode}: added={stats['added']} duplicates={stats['duplicates']} "
         f"invalid={stats['invalid']} new_maps={stats['maps']} "
-        f"new_categories={stats['categories']}"
+        f"new_categories={stats['categories']} cleared_source_tables={stats['cleared_source_tables']}"
     )
     return 0
 
