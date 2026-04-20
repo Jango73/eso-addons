@@ -1,15 +1,15 @@
 
 DEFAULTS = {
-    corner = 'bottomright',
-    orientation = 'north',
+    corner = 'right',
+    orientation = 'player',
     sizePercent = 22,
-    zoom = 6,
-    opacity = 100,
+    zoom = 12,
+    opacity = 70,
     refreshRate = 50,
     hidden = false,
     showResourceIndicators = true,
     autoSaveSpots = false,
-    showToolbar = false,
+    showToolbar = true,
     showNotes = false,
 }
 
