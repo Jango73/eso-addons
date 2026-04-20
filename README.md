@@ -81,7 +81,7 @@ Useful commands:
 
 ## Bundled Spot Data
 
-The addon can ship with default spot data in `MiniMap/MiniMapData.lua`. To merge spots from an exported `MiniMapSpots` saved-variable file into that bundled data table, run:
+The addon ships with a small default spot database in `MiniMap/MiniMapData.lua`. This default database is barely started and will grow over time as you collect resource spots while playing. The more you play, the more complete it becomes. To merge spots from an exported `MiniMapSpots` saved-variable file into that bundled data table, run:
 
 ```bash
 scripts/import-default-spots.sh source.lua
