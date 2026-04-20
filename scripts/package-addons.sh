@@ -55,7 +55,7 @@ discover_addons() {
         addon_name="$(basename "$addon_dir")"
 
         case "$addon_name" in
-            dist|scripts|MiniMapMapDumper|.*)
+            dist|scripts|.*)
                 continue
                 ;;
         esac
