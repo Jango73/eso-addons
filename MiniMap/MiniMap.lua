@@ -80,11 +80,11 @@ local function NormalizeCorner(value)
 end
 
 local function PrintSpotAdded(category)
-    ZO_AlertNoSuppression(UI_ALERT_CATEGORY_ALERT, nil, "Added a " .. category .. " spot")
+    ZO_AlertNoSuppression(UI_ALERT_CATEGORY_ALERT, nil, Locale.GetString("spotAdded"):format(category))
 end
 
 local function PrintSpotDeleted(count)
-    ZO_AlertNoSuppression(UI_ALERT_CATEGORY_ALERT, nil, string.format("%d spot(s) deleted", count))
+    ZO_AlertNoSuppression(UI_ALERT_CATEGORY_ALERT, nil, Locale.GetString("spotsDeleted"):format(count))
 end
 
 local function IsValidCategory(cat)
