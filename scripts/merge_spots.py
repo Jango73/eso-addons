@@ -4,6 +4,7 @@
 Usage:
     merge_spots.py source.lua target.lua
     merge_spots.py --target-var MiniMapDefaultSpots source.lua MiniMap/MiniMapData.lua
+    merge_spots.py --map-key-dump MiniMapMapDumper.lua source.lua target.lua
 
 The target file is updated in place. A .bak copy is written by default.
 Duplicate spots are detected with the same threshold as the addon:
@@ -307,6 +308,68 @@ def looks_like_map_data(value: Any) -> bool:
     return True
 
 
+def is_universal_map_key(value: Any) -> bool:
+    return isinstance(value, str) and (value.startswith("map:") or value.startswith("texture:"))
+
+
+def load_map_key_lookup(path: Path, var_name: str) -> dict[str, str]:
+    text = path.read_text(encoding="utf-8")
+    _start, _end, root = find_lua_assignment(text, var_name)
+    by_name = root.get("byName")
+    if not isinstance(by_name, OrderedDict):
+        raise LuaParseError(f"{var_name}.byName not found in {path}")
+
+    lookup: dict[str, str] = {}
+    for name, entry in by_name.items():
+        if not isinstance(name, str) or not isinstance(entry, OrderedDict):
+            continue
+        key = entry.get("key")
+        if isinstance(key, str) and key:
+            lookup[name] = key
+
+    if not lookup:
+        raise LuaParseError(f"no map name keys found in {path}")
+    return lookup
+
+
+def normalize_map_key(map_name: Any, lookup: dict[str, str] | None) -> str | None:
+    if not isinstance(map_name, str):
+        return None
+    if is_universal_map_key(map_name):
+        return map_name
+    if lookup is None:
+        return map_name
+    return lookup.get(map_name)
+
+
+def normalize_map_data_keys(map_data: OrderedDict[Any, Any], lookup: dict[str, str]) -> dict[str, int]:
+    stats = {
+        "renamed": 0,
+        "duplicates": 0,
+        "unmapped": 0,
+    }
+    normalized: OrderedDict[Any, Any] = OrderedDict()
+
+    for map_name, source_map_data in map_data.items():
+        map_key = normalize_map_key(map_name, lookup)
+        if map_key is None:
+            stats["unmapped"] += 1
+            continue
+        if map_key not in normalized:
+            normalized[map_key] = OrderedDict()
+            if map_key != map_name:
+                stats["renamed"] += 1
+        if isinstance(source_map_data, OrderedDict):
+            partial = merge_map_data(OrderedDict([(map_key, source_map_data)]), normalized)
+            stats["duplicates"] += partial["duplicates"]
+
+    map_data.clear()
+    for key, value in normalized.items():
+        map_data[key] = value
+
+    return stats
+
+
 def collect_data_tables(root: OrderedDict[Any, Any]) -> list[tuple[tuple[Any, ...], OrderedDict[Any, Any]]]:
     found: list[tuple[tuple[Any, ...], OrderedDict[Any, Any]]] = []
 
@@ -456,6 +519,16 @@ def parse_args() -> argparse.Namespace:
         help=f"target Lua variable name to update, default: {DEFAULT_SPOTS_VAR_NAME}",
     )
     parser.add_argument(
+        "--map-key-dump",
+        type=Path,
+        help="Lua dump produced by MiniMapMapDumper; converts localized map names to universal keys",
+    )
+    parser.add_argument(
+        "--map-key-var",
+        default="MiniMapMapKeyDump",
+        help="Lua variable name in --map-key-dump, default: MiniMapMapKeyDump",
+    )
+    parser.add_argument(
         "--no-backup",
         action="store_true",
         help="do not create target.lua.bak before writing",
@@ -479,6 +552,7 @@ def main() -> int:
 
     source_tables = collect_data_tables(source_spots)
     target_tables = collect_data_tables(target_spots)
+    map_key_lookup = load_map_key_lookup(args.map_key_dump, args.map_key_var) if args.map_key_dump else None
 
     if not source_tables:
         raise LuaParseError(f"no spot data table found in {args.source}")
@@ -491,9 +565,17 @@ def main() -> int:
         "invalid": 0,
         "maps": 0,
         "categories": 0,
+        "renamed_maps": 0,
+        "unmapped_maps": 0,
     }
 
     for source_table, target_table, _source_path, _target_path in select_merge_pairs(source_tables, target_tables):
+        if map_key_lookup is not None:
+            target_normalize_stats = normalize_map_data_keys(target_table, map_key_lookup)
+            source_normalize_stats = normalize_map_data_keys(source_table, map_key_lookup)
+            stats["renamed_maps"] += target_normalize_stats["renamed"] + source_normalize_stats["renamed"]
+            stats["duplicates"] += target_normalize_stats["duplicates"] + source_normalize_stats["duplicates"]
+            stats["unmapped_maps"] += target_normalize_stats["unmapped"] + source_normalize_stats["unmapped"]
         add_stats(stats, merge_map_data(source_table, target_table))
 
     if not args.dry_run:
@@ -506,7 +588,8 @@ def main() -> int:
     print(
         f"{mode}: added={stats['added']} duplicates={stats['duplicates']} "
         f"invalid={stats['invalid']} new_maps={stats['maps']} "
-        f"new_categories={stats['categories']}"
+        f"new_categories={stats['categories']} renamed_maps={stats['renamed_maps']} "
+        f"unmapped_maps={stats['unmapped_maps']}"
     )
     return 0
 

@@ -93,7 +93,8 @@ end
 
 function SpotDatabase:GetBuiltinSpots(category, mapName)
     if not category then return {} end
-    local currentMap = mapName or GetMapName()
+    local currentMap = mapName or MiniMapRenderUtils.GetCurrentMapKey()
+    if not currentMap then return {} end
     if not self._builtinData or not self._builtinData[currentMap] then
         return {}
     end
@@ -106,7 +107,8 @@ function SpotDatabase:AddSpot(x, y, category, mapName)
     end
     if not x or not y or not category then return false end
 
-    local currentMap = mapName or GetMapName()
+    local currentMap = mapName or MiniMapRenderUtils.GetCurrentMapKey()
+    if not currentMap then return false end
     if not self._data[currentMap] then
         self._data[currentMap] = {}
     end
@@ -180,7 +182,8 @@ end
 function SpotDatabase:GetNearestSpot(px, py, category, maxCount, mapName)
     if not px or not py then return nil end
     maxCount = maxCount or 1
-    local currentMap = mapName or GetMapName()
+    local currentMap = mapName or MiniMapRenderUtils.GetCurrentMapKey()
+    if not currentMap then return nil end
 
     local spots = self:GetSpots(category, currentMap)
 
@@ -205,7 +208,8 @@ end
 function SpotDatabase:GetNearestSpotByCategory(px, py, maxCount, mapName)
     if not px or not py then return {} end
     maxCount = maxCount or 1
-    local currentMap = mapName or GetMapName()
+    local currentMap = mapName or MiniMapRenderUtils.GetCurrentMapKey()
+    if not currentMap then return {} end
     local results = {}
     local mapData = self:GetSpotsByMap(currentMap)
 
@@ -242,7 +246,8 @@ end
 
 function SpotDatabase:RemoveSpotsInRadius(x, y, radius, category, mapName)
     if not self._data or not x or not y then return 0, 0 end
-    mapName = mapName or GetMapName()
+    mapName = mapName or MiniMapRenderUtils.GetCurrentMapKey()
+    if not mapName then return 0, 0 end
     local threshold = radius or MINIMAP_SPOT_DUPLICATE_THRESHOLD
     local thresholdSq = threshold * threshold
     local removed = 0
@@ -294,13 +299,15 @@ end
 
 function SpotDatabase:GetSpots(category, mapName)
     if not category then return {} end
-    local currentMap = mapName or GetMapName()
+    local currentMap = mapName or MiniMapRenderUtils.GetCurrentMapKey()
+    if not currentMap then return {} end
     local mapData = self:GetSpotsByMap(currentMap)
     return mapData[category] or {}
 end
 
 function SpotDatabase:GetSpotsByMap(mapName)
-    local currentMap = mapName or GetMapName()
+    local currentMap = mapName or MiniMapRenderUtils.GetCurrentMapKey()
+    if not currentMap then return {} end
     if self._mergedCache and self._mergedCache[currentMap] then
         return self._mergedCache[currentMap]
     end

@@ -38,10 +38,10 @@ function RouteRenderer:HideAll()
     end
 end
 
-function RouteRenderer:Update(playerX, playerY, mapRotation, center, radius, currentMapName)
+function RouteRenderer:Update(playerX, playerY, mapRotation, center, radius, currentMapKey)
     self:EnsureInitialized()
 
-    self.routeManager:RecalculateIfNeeded(playerX, playerY, currentMapName)
+    self.routeManager:RecalculateIfNeeded(playerX, playerY, currentMapKey)
     local segments = self.routeManager:GetRouteSegments()
 
     for i, segment in ipairs(segments) do

@@ -93,10 +93,10 @@ function SpotRenderer:HideAll()
     end)
 end
 
-function SpotRenderer:Update(playerX, playerY, mapRotation, center, radius, margin, currentMapName)
+function SpotRenderer:Update(playerX, playerY, mapRotation, center, radius, margin, currentMapKey)
     self:EnsureInitialized()
 
-    local zoneSpots = SpotDatabase:GetSpotsByMap(currentMapName)
+    local zoneSpots = SpotDatabase:GetSpotsByMap(currentMapKey)
     if not zoneSpots then
         self:HideAll()
         return

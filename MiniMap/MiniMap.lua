@@ -16,7 +16,7 @@ local ADDON_NAME = "MiniMap"
 local MiniMap = {
     tiles = {},
     tileCount = 0,
-    currentMapName = nil,
+    currentMapKey = nil,
     currentMapType = nil,
     nextMapRefreshMs = 0,
     nextLocationProbeMs = 0,
@@ -110,7 +110,7 @@ end
 local function AddSpotAtPlayer(category)
     local x, y = GetPlayerMapPosition()
     if x and y then
-        local added, isNew = SpotDatabase:AddSpot(x, y, category, MiniMap.currentMapName)
+        local added, isNew = SpotDatabase:AddSpot(x, y, category, MiniMap.currentMapKey)
         if added and isNew then
             PrintSpotAdded(category)
             return true
@@ -252,7 +252,7 @@ function MiniMap:CreateControls()
             if x and y then
                 local deleted = 0
                 ForEachCategory(function(cat)
-                    local d = SpotDatabase:RemoveSpotsInRadius(x, y, MINIMAP_SPOT_DUPLICATE_THRESHOLD, cat.key, MiniMap.currentMapName)
+                    local d = SpotDatabase:RemoveSpotsInRadius(x, y, MINIMAP_SPOT_DUPLICATE_THRESHOLD, cat.key, MiniMap.currentMapKey)
                     deleted = deleted + d
                 end)
                 PrintSpotDeleted(deleted)
@@ -666,7 +666,7 @@ function MiniMap:GetNearestResourceSpot(category)
         return nil
     end
 
-    local spot = SpotDatabase:GetNearestSpot(px, py, category, 1, self.currentMapName)
+    local spot = SpotDatabase:GetNearestSpot(px, py, category, 1, self.currentMapKey)
     if spot then
         return spot.x, spot.y
     end
@@ -679,8 +679,8 @@ function MiniMap:UpdateMapOverlays(playerX, playerY, mapRotation)
     local center = radius
     local margin = self.spotRenderer:GetMargin()
 
-    self.spotRenderer:Update(playerX, playerY, mapRotation, center, radius, margin, self.currentMapName)
-    self.routeRenderer:Update(playerX, playerY, mapRotation, center, radius, self.currentMapName)
+    self.spotRenderer:Update(playerX, playerY, mapRotation, center, radius, margin, self.currentMapKey)
+    self.routeRenderer:Update(playerX, playerY, mapRotation, center, radius, self.currentMapKey)
 
     self.indicatorRenderer:Update(playerX, playerY, mapRotation, center, radius, margin)
 end
@@ -728,8 +728,13 @@ function MiniMap:RefreshMap(force)
     local mapType = GetMapType and GetMapType() or MAPTYPE_ZONE
     self.isCityMap = (mapType == MAPTYPE_SUBZONE)
 
-    local mapName = GetMapName and GetMapName() or ""
+    local mapKey = MiniMapRenderUtils.GetCurrentMapKey()
     local numHorizontalTiles, numVerticalTiles = 0, 0
+
+    if not mapKey then
+        self.root:SetHidden(true)
+        return false
+    end
 
     if GetMapNumTiles then
         numHorizontalTiles, numVerticalTiles = GetMapNumTiles()
@@ -741,12 +746,12 @@ function MiniMap:RefreshMap(force)
     end
 
     if force
-        or mapName ~= self.currentMapName
+        or mapKey ~= self.currentMapKey
         or mapType ~= self.currentMapType
         or numHorizontalTiles ~= self.numHorizontalTiles
         or numVerticalTiles ~= self.numVerticalTiles
     then
-        self.currentMapName = mapName
+        self.currentMapKey = mapKey
         self.currentMapType = mapType
         self.numHorizontalTiles = numHorizontalTiles
         self.numVerticalTiles = numVerticalTiles
@@ -995,7 +1000,7 @@ function MiniMap:HandleSlashCommand(arguments)
             return
         elseif routeCommand == "all" then
             RouteManager:SetAllCategories()
-            RouteManager:CalculateRoute(self.playerMapX, self.playerMapY, self.currentMapName)
+            RouteManager:CalculateRoute(self.playerMapX, self.playerMapY, self.currentMapKey)
             Print(RouteManager:GetRouteInfo())
             return
         end
@@ -1018,7 +1023,7 @@ function MiniMap:HandleSlashCommand(arguments)
             RouteManager:ToggleCategory(cat)
         end
 
-        RouteManager:CalculateRoute(self.playerMapX, self.playerMapY, self.currentMapName)
+        RouteManager:CalculateRoute(self.playerMapX, self.playerMapY, self.currentMapKey)
         Print(RouteManager:GetRouteInfo())
     elseif command == "routeclear" then
         RouteManager:ClearCategories()
