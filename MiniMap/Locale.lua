@@ -98,6 +98,10 @@ Locale.STRINGS = {
         positionUnknown = 'Position unknown',
         routeCleared = 'Route cleared',
         noRouteActive = 'No route active',
+        compassN = 'N',
+        compassS = 'S',
+        compassE = 'E',
+        compassW = 'W',
     },
     fr = {
         helpCorner = '/minimap corner tl|tr|bl|br|left|right|top|bottom',
@@ -181,6 +185,10 @@ Locale.STRINGS = {
         positionUnknown = 'Position inconnue',
         routeCleared = 'Route effacée',
         noRouteActive = 'Aucune route active',
+        compassN = 'N',
+        compassS = 'S',
+        compassE = 'E',
+        compassW = 'O',
     },
     es = {
         helpCorner = '/minimap corner tl|tr|bl|br|left|right|top|bottom',
@@ -264,6 +272,10 @@ Locale.STRINGS = {
         positionUnknown = 'Posicion desconocida',
         routeCleared = 'Ruta eliminada',
         noRouteActive = 'Ninguna ruta activa',
+        compassN = 'N',
+        compassS = 'S',
+        compassE = 'E',
+        compassW = 'O',
     },
     ja = {
         helpCorner = '/minimap corner tl|tr|bl|br|left|right|top|bottom',
@@ -347,6 +359,10 @@ Locale.STRINGS = {
         positionUnknown = '位置不明',
         routeCleared = 'ルートがクリアされました',
         noRouteActive = 'アクティブなルートなし',
+        compassN = '北',
+        compassS = '南',
+        compassE = '東',
+        compassW = '西',
     },
     de = {
         helpCorner = '/minimap corner tl|tr|bl|br|left|right|top|bottom',
@@ -430,6 +446,10 @@ Locale.STRINGS = {
         positionUnknown = 'Position unbekannt',
         routeCleared = 'Route geloscht',
         noRouteActive = 'Keine aktive Route',
+        compassN = 'N',
+        compassS = 'S',
+        compassE = 'O',
+        compassW = 'W',
     },
     ru = {
         helpCorner = '/minimap corner tl|tr|bl|br|left|right|top|bottom',
@@ -513,6 +533,10 @@ Locale.STRINGS = {
         positionUnknown = 'Позиция неизвестна',
         routeCleared = 'Маршрут очищен',
         noRouteActive = 'Нет активного маршрута',
+        compassN = 'С',
+        compassS = 'Ю',
+        compassE = 'В',
+        compassW = 'З',
     },
     zh = {
         helpCorner = '/minimap corner tl|tr|bl|br|left|right|top|bottom',
@@ -596,6 +620,10 @@ Locale.STRINGS = {
         positionUnknown = '位置未知',
         routeCleared = '路线已清除',
         noRouteActive = '无活动路线',
+        compassN = '北',
+        compassS = '南',
+        compassE = '东',
+        compassW = '西',
     },
 }
 
@@ -603,4 +631,9 @@ function Locale.GetString(key)
     local lang = Locale.GetLanguage()
     local strings = Locale.STRINGS[lang] or Locale.STRINGS.en
     return strings[key] or Locale.STRINGS.en[key] or key
+end
+
+function Locale.GetCompassDirection(direction)
+    local key = "compass" .. direction
+    return Locale.GetString(key)
 end

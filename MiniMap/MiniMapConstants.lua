@@ -18,10 +18,16 @@ MINIMAP_EDGE_INDICATOR_QUEST = "activeQuest"
 MINIMAP_EDGE_INDICATOR_WAYSHRINE = "wayshrine"
 MINIMAP_EDGE_INDICATOR_ROUTE = "activeRoute"
 
+MINIMAP_COMPASS_N = "compassN"
+MINIMAP_COMPASS_S = "compassS"
+MINIMAP_COMPASS_W = "compassW"
+MINIMAP_COMPASS_E = "compassE"
+
 MINIMAP_ESO_BORDER_COLOR = { 0.57, 0.56, 0.45, 1 }
 MINIMAP_QUEST_COLOR = { 1, 1, 1, 1 }
 MINIMAP_WAYSHRINE_COLOR = { 1, 1, 1, 1 }
 MINIMAP_ROUTE_COLOR = { 0.25, 0.25, 0.25, 1 }
+MINIMAP_COMPASS_COLOR = { 0.8, 0.8, 0.7, 1 }
 
 MINIMAP_NOTES_PANEL_COLOR = { 0, 0, 0, 0.7 }
 MINIMAP_NOTES_EDITOR_COLOR = { 0, 0, 0, 0.85 }
@@ -51,6 +57,7 @@ MINIMAP_SPOT_TEXTURES = {
 
 MINIMAP_MARKER_TYPE_TEXTURE = "texture"
 MINIMAP_MARKER_TYPE_BACKDROP = "backdrop"
+MINIMAP_MARKER_TYPE_LABEL = "label"
 
 MARKER_DEFINITIONS = {
     [MINIMAP_EDGE_INDICATOR_QUEST] = {
@@ -80,5 +87,33 @@ MARKER_DEFINITIONS = {
         insideSizeFactor = MINIMAP_SIZE_FACTOR_INSIDE_MARKER,
         hasEdge = true,
         hasInside = true,
+    },
+    [MINIMAP_COMPASS_N] = {
+        type = MINIMAP_MARKER_TYPE_LABEL,
+        text = "N",
+        color = MINIMAP_COMPASS_COLOR,
+        hasEdge = true,
+        compassDirection = "N",
+    },
+    [MINIMAP_COMPASS_S] = {
+        type = MINIMAP_MARKER_TYPE_LABEL,
+        text = "S",
+        color = MINIMAP_COMPASS_COLOR,
+        hasEdge = true,
+        compassDirection = "S",
+    },
+    [MINIMAP_COMPASS_W] = {
+        type = MINIMAP_MARKER_TYPE_LABEL,
+        text = "W",
+        color = MINIMAP_COMPASS_COLOR,
+        hasEdge = true,
+        compassDirection = "W",
+    },
+    [MINIMAP_COMPASS_E] = {
+        type = MINIMAP_MARKER_TYPE_LABEL,
+        text = "E",
+        color = MINIMAP_COMPASS_COLOR,
+        hasEdge = true,
+        compassDirection = "E",
     },
 }
