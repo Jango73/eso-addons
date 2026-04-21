@@ -779,7 +779,7 @@ function MiniMap:UpdateQuestIndicatorWayshrine()
     local dyD = qy - py
     local distD = math.sqrt(dxD * dxD + dyD * dyD)
 
-    local wayshrinePlayerX, wayshrinePlayerY, distA = self:GetNearestKnownWayshrineToPosition(px, py)
+    local wayshrinePlayerX, wayshrinePlayerY, distA = self:GetNearestWayshrineToPosition(px, py)
     if not wayshrinePlayerX then
         self.questIndicatorWayshrineX = nil
         self.questIndicatorWayshrineY = nil
