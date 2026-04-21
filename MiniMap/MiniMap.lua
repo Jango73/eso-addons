@@ -21,7 +21,10 @@ local MiniMap = {
     nextMapRefreshMs = 0,
     nextLocationProbeMs = 0,
     nextQuestBreadcrumbRefreshMs = 0,
+    nextWayshrineRouteUpdateMs = 0,
     isCityMap = false,
+    questIndicatorWayshrineX = nil,
+    questIndicatorWayshrineY = nil,
 }
 
 local function Print(message)
@@ -298,9 +301,15 @@ function MiniMap:CreateControls()
     self.indicatorRenderer = IndicatorRenderer
     self.indicatorRenderer:Init(self, {
         [MINIMAP_EDGE_INDICATOR_QUEST] = function()
+            if self.questIndicatorWayshrineX then
+                return self.questIndicatorWayshrineX, self.questIndicatorWayshrineY
+            end
             return self:GetActiveQuestTargetPosition()
         end,
         [MINIMAP_EDGE_INDICATOR_WAYSHRINE] = function()
+            if self.questIndicatorWayshrineX then
+                return nil, nil
+            end
             return self:GetNearestWayshrinePosition()
         end,
         [MINIMAP_EDGE_INDICATOR_ROUTE] = function()
@@ -683,10 +692,17 @@ function MiniMap:GetNearestWayshrinePosition()
     if not px or not py then
         return nil
     end
+    return self:GetNearestWayshrineToPosition(px, py)
+end
+
+function MiniMap:GetNearestWayshrineToPosition(px, py)
+    if not px or not py then
+        return nil, nil, nil
+    end
 
     local numNodes = GetNumFastTravelNodes()
     if not numNodes or numNodes == 0 then
-        return nil
+        return nil, nil, nil
     end
 
     local nearestDist = math.huge
@@ -705,7 +721,89 @@ function MiniMap:GetNearestWayshrinePosition()
         end
     end
 
-    return nearestX, nearestY
+    if nearestX then
+        return nearestX, nearestY, math.sqrt(nearestDist)
+    end
+    return nil, nil, nil
+end
+
+function MiniMap:GetNearestKnownWayshrineToPosition(px, py)
+    if not px or not py then
+        return nil, nil, nil
+    end
+
+    local numNodes = GetNumFastTravelNodes()
+    if not numNodes or numNodes == 0 then
+        return nil, nil, nil
+    end
+
+    local nearestDist = math.huge
+    local nearestX, nearestY
+
+    for i = 1, numNodes do
+        local known, name, x, y, icon, glowIcon, poiType, isShown, linkedLocked = GetFastTravelNodeInfo(i)
+        if known and x and y and poiType == POI_TYPE_WAYSHRINE then
+            local dx = x - px
+            local dy = y - py
+            local dist = dx * dx + dy * dy
+            if dist < nearestDist then
+                nearestDist = dist
+                nearestX, nearestY = x, y
+            end
+        end
+    end
+
+    if nearestX then
+        return nearestX, nearestY, math.sqrt(nearestDist)
+    end
+    return nil, nil, nil
+end
+
+function MiniMap:UpdateQuestIndicatorWayshrine()
+    local now = GetFrameTimeMilliseconds and GetFrameTimeMilliseconds() or 0
+    if now < self.nextWayshrineRouteUpdateMs then
+        return
+    end
+    self.nextWayshrineRouteUpdateMs = now + 1000
+
+    local px, py = self.playerMapX, self.playerMapY
+    local qx, qy = self:GetActiveQuestTargetPosition()
+
+    if not px or not py or not qx or not qy then
+        self.questIndicatorWayshrineX = nil
+        self.questIndicatorWayshrineY = nil
+        return
+    end
+
+    local dxD = qx - px
+    local dyD = qy - py
+    local distD = math.sqrt(dxD * dxD + dyD * dyD)
+
+    local wayshrinePlayerX, wayshrinePlayerY, distA = self:GetNearestKnownWayshrineToPosition(px, py)
+    if not wayshrinePlayerX then
+        self.questIndicatorWayshrineX = nil
+        self.questIndicatorWayshrineY = nil
+        return
+    end
+
+    local wayshrineQuestX, wayshrineQuestY, distB = self:GetNearestKnownWayshrineToPosition(qx, qy)
+    if not wayshrineQuestX then
+        self.questIndicatorWayshrineX = nil
+        self.questIndicatorWayshrineY = nil
+        return
+    end
+
+    local sameWayshrine = (wayshrinePlayerX == wayshrineQuestX and wayshrinePlayerY == wayshrineQuestY)
+    if sameWayshrine then
+        self.questIndicatorWayshrineX = nil
+        self.questIndicatorWayshrineY = nil
+    elseif distA + distB < distD then
+        self.questIndicatorWayshrineX = wayshrinePlayerX
+        self.questIndicatorWayshrineY = wayshrinePlayerY
+    else
+        self.questIndicatorWayshrineX = nil
+        self.questIndicatorWayshrineY = nil
+    end
 end
 
 function MiniMap:GetNearestResourceSpot(category)
@@ -1135,6 +1233,7 @@ function MiniMap:Initialize()
         end
 
         MiniMap:UpdatePlayer()
+        MiniMap:UpdateQuestIndicatorWayshrine()
 
         if sceneShown then
             MiniMap.root:SetHidden(true)
