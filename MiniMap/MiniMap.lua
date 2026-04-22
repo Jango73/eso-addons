@@ -615,6 +615,19 @@ function MiniMap:RegisterSettingsMenu()
             default = DEFAULTS.showNotes,
             width = 'full',
         },
+        {
+            type = 'checkbox',
+            name = self:Text('autoSelectNearestQuestName'),
+            tooltip = self:Text('autoSelectNearestQuestTooltip'),
+            getFunc = function()
+                return self.saved.autoSelectNearestQuest
+            end,
+            setFunc = function(value)
+                self.saved.autoSelectNearestQuest = value
+            end,
+            default = DEFAULTS.autoSelectNearestQuest,
+            width = 'full',
+        },
     }
 
     LAM:RegisterAddonPanel('MiniMapSettings', panelData)
@@ -640,6 +653,53 @@ function MiniMap:GetFocusedQuestIndex()
     end
 
     return nil
+end
+
+function MiniMap:SelectNearestQuestWithObjective()
+    if not WORLD_MAP_QUEST_BREADCRUMBS or not self.playerMapX or not self.playerMapY then
+        return
+    end
+
+    local numQuests = GetNumJournalQuests()
+    if not numQuests or numQuests == 0 then
+        return
+    end
+
+    local bestQuestIndex = nil
+    local bestDistanceSq = nil
+
+    for questIndex = 1, numQuests do
+        local questName, _, _, _, _, _, _, _, _, _, _, _, _, questType = GetJournalQuestInfo(questIndex)
+        if questName then
+            local mainStepIndex = QUEST_MAIN_STEP_INDEX or 1
+            local numSteps = GetJournalQuestNumSteps and GetJournalQuestNumSteps(questIndex) or mainStepIndex
+
+            for stepIndex = mainStepIndex, numSteps do
+                local numPositions = WORLD_MAP_QUEST_BREADCRUMBS:GetNumQuestConditionPositions(questIndex, stepIndex)
+                if numPositions then
+                    for conditionIndex = 1, numPositions do
+                        local positionData = WORLD_MAP_QUEST_BREADCRUMBS:GetQuestConditionPosition(questIndex, stepIndex, conditionIndex)
+                        if positionData and positionData.insideCurrentMapWorld and positionData.xLoc and positionData.yLoc then
+                            local dx = positionData.xLoc - self.playerMapX
+                            local dy = positionData.yLoc - self.playerMapY
+                            local distanceSq = (dx * dx) + (dy * dy)
+                            if not bestDistanceSq or distanceSq < bestDistanceSq then
+                                bestDistanceSq = distanceSq
+                                bestQuestIndex = questIndex
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    if bestQuestIndex then
+        QUEST_JOURNAL_MANAGER:SetActiveQuestIndex(bestQuestIndex)
+        return true
+    end
+
+    return false
 end
 
 function MiniMap:GetActiveQuestTargetPosition()
@@ -1273,6 +1333,13 @@ function MiniMap:Initialize()
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_ZONE_CHANGED", EVENT_ZONE_CHANGED, function()
         RefreshMapAfterLocationChange()
     end)
+
+    local function OnQuestCompleted(eventCode, questIndex)
+        if MiniMap.saved.autoSelectNearestQuest and questIndex then
+            MiniMap:SelectNearestQuestWithObjective()
+        end
+    end
+    EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_QUEST_COMPLETED", EVENT_QUEST_COMPLETED, OnQuestCompleted)
 
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_LOOT_UPDATED", EVENT_LOOT_UPDATED, function()
         local lootName, actionName, isOwned = GetLootTargetInfo()

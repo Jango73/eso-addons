@@ -11,6 +11,7 @@ DEFAULTS = {
     autoSaveSpots = false,
     showToolbar = true,
     showNotes = false,
+    autoSelectNearestQuest = true,
 }
 
 CORNERS = {
