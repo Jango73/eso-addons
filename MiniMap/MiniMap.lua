@@ -1336,7 +1336,9 @@ function MiniMap:Initialize()
 
     local function OnQuestCompleted(eventCode, questIndex)
         if MiniMap.saved.autoSelectNearestQuest and questIndex then
-            MiniMap:SelectNearestQuestWithObjective()
+            zo_callLater(function()
+                MiniMap:SelectNearestQuestWithObjective()
+            end, 5000)
         end
     end
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_QUEST_COMPLETED", EVENT_QUEST_COMPLETED, OnQuestCompleted)
