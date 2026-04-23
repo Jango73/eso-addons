@@ -25,6 +25,7 @@ MiniMap/
 - Renderer pattern: `Init(owner)`, `Update(...)`, `ApplyLayout(size)`
 - Iterate categories with `ForEachCategory(callback)` using RESOURCE_CATEGORIES
 - Private vars use underscore prefix (`_data`, `_selectedCategories`)
+- For debugging, use CHAT_ROUTER:AddDebugMessage()
 
 ## Dependencies
 

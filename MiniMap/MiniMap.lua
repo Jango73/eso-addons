@@ -656,6 +656,8 @@ function MiniMap:GetFocusedQuestIndex()
 end
 
 function MiniMap:SelectNearestQuestWithObjective()
+    CHAT_ROUTER:AddDebugMessage("MiniMap:SelectNearestQuestWithObjective()")
+
     if not WORLD_MAP_QUEST_BREADCRUMBS or not self.playerMapX or not self.playerMapY then
         return
     end
@@ -698,12 +700,19 @@ function MiniMap:SelectNearestQuestWithObjective()
         end
     end
 
+    if questsProcessed > 0 then
+        CHAT_ROUTER:AddDebugMessage(string.format("[MiniMap] Quests processed: %d", questsProcessed))
+    end
+
     if bestQuestIndex then
         if QUEST_JOURNAL_MANAGER and QUEST_JOURNAL_MANAGER.SetActiveQuestIndex then
             QUEST_JOURNAL_MANAGER:SetActiveQuestIndex(bestQuestIndex)
         end
+        CHAT_ROUTER:AddDebugMessage(string.format("[MiniMap] Selected quest: %s (index %d)", bestQuestName or "Unknown", bestQuestIndex))
         return true
     end
+
+    CHAT_ROUTER:AddDebugMessage("[MiniMap] No quest found")
 
     return false
 end
@@ -1292,6 +1301,13 @@ function MiniMap:Initialize()
             EVENT_MANAGER:RegisterForUpdate(ADDON_NAME .. "Update", MiniMap.saved.refreshRate or 500, OnMinimapUpdate)
         end
 
+        if MiniMap._questSelectTimer and MiniMap._questSelectTimer > 0 then
+            if GetGameTimeMilliseconds() >= MiniMap._questSelectTimer then
+                MiniMap._questSelectTimer = 0
+                MiniMap:SelectNearestQuestWithObjective()
+            end
+        end
+
         local sceneShown = MiniMap:IsWorldMapShowing()
 
         if not sceneShown then
@@ -1340,19 +1356,17 @@ function MiniMap:Initialize()
         RefreshMapAfterLocationChange()
     end)
 
+    MiniMap._questSelectTimer = 0
+
     local function OnQuestCompleted(eventCode, questIndex)
         if questIndex and MiniMap.saved.autoSelectNearestQuest then
-            zo_callLater(function()
-                MiniMap:SelectNearestQuestWithObjective()
-            end, 5000)
+            MiniMap._questSelectTimer = GetGameTimeMilliseconds() + 2500
         end
     end
 
     local function OnQuestAdvanced(eventCode, questIndex, questName, isPushed, isComplete, mainStepChanged)
         if isComplete and MiniMap.saved.autoSelectNearestQuest then
-            zo_callLater(function()
-                MiniMap:SelectNearestQuestWithObjective()
-            end, 5000)
+            MiniMap._questSelectTimer = GetGameTimeMilliseconds() + 2500
         end
     end
 
