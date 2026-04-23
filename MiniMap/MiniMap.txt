@@ -1,8 +1,8 @@
 ## Title: MiniMap
 ## Author: Jango73
 ## APIVersion: 101049
-## Version: 1.0.0
-## AddOnVersion: 10000
+## Version: 1.1.0
+## AddOnVersion: 11000
 ## DependsOn: LibAddonMenu-2.0
 ## SavedVariables: MiniMapSavedVariables
 ## SavedVariables: MiniMapSpots
