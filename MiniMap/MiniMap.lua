@@ -667,9 +667,11 @@ function MiniMap:SelectNearestQuestWithObjective()
 
     local bestQuestIndex = nil
     local bestDistanceSq = nil
+    local questsProcessed = 0
+    local bestQuestName = nil
 
     for questIndex = 1, numQuests do
-        local questName, _, _, _, _, _, _, _, _, _, _, _, _, questType = GetJournalQuestInfo(questIndex)
+        local questName, _, _, _, _, _, _, _, _, _, _, _, questType = GetJournalQuestInfo(questIndex)
         if questName then
             local mainStepIndex = QUEST_MAIN_STEP_INDEX or 1
             local numSteps = GetJournalQuestNumSteps and GetJournalQuestNumSteps(questIndex) or mainStepIndex
@@ -680,12 +682,14 @@ function MiniMap:SelectNearestQuestWithObjective()
                     for conditionIndex = 1, numPositions do
                         local positionData = WORLD_MAP_QUEST_BREADCRUMBS:GetQuestConditionPosition(questIndex, stepIndex, conditionIndex)
                         if positionData and positionData.insideCurrentMapWorld and positionData.xLoc and positionData.yLoc then
+                            questsProcessed = questsProcessed + 1
                             local dx = positionData.xLoc - self.playerMapX
                             local dy = positionData.yLoc - self.playerMapY
                             local distanceSq = (dx * dx) + (dy * dy)
                             if not bestDistanceSq or distanceSq < bestDistanceSq then
                                 bestDistanceSq = distanceSq
                                 bestQuestIndex = questIndex
+                                bestQuestName = questName
                             end
                         end
                     end
@@ -695,7 +699,9 @@ function MiniMap:SelectNearestQuestWithObjective()
     end
 
     if bestQuestIndex then
-        QUEST_JOURNAL_MANAGER:SetActiveQuestIndex(bestQuestIndex)
+        if QUEST_JOURNAL_MANAGER and QUEST_JOURNAL_MANAGER.SetActiveQuestIndex then
+            QUEST_JOURNAL_MANAGER:SetActiveQuestIndex(bestQuestIndex)
+        end
         return true
     end
 
@@ -1335,13 +1341,23 @@ function MiniMap:Initialize()
     end)
 
     local function OnQuestCompleted(eventCode, questIndex)
-        if MiniMap.saved.autoSelectNearestQuest and questIndex then
+        if questIndex and MiniMap.saved.autoSelectNearestQuest then
             zo_callLater(function()
                 MiniMap:SelectNearestQuestWithObjective()
             end, 5000)
         end
     end
+
+    local function OnQuestAdvanced(eventCode, questIndex, questName, isPushed, isComplete, mainStepChanged)
+        if isComplete and MiniMap.saved.autoSelectNearestQuest then
+            zo_callLater(function()
+                MiniMap:SelectNearestQuestWithObjective()
+            end, 5000)
+        end
+    end
+
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_QUEST_COMPLETED", EVENT_QUEST_COMPLETED, OnQuestCompleted)
+    EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_QUEST_ADVANCED", EVENT_QUEST_ADVANCED, OnQuestAdvanced)
 
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_LOOT_UPDATED", EVENT_LOOT_UPDATED, function()
         local lootName, actionName, isOwned = GetLootTargetInfo()
