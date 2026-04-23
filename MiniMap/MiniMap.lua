@@ -1094,6 +1094,7 @@ function MiniMap:ShowHelp()
         "helpRoute",
         "helpRouteClear",
         "helpRouteInfo",
+        "helpResearch",
     }
 
     for _, key in ipairs(helpLines) do
@@ -1101,7 +1102,92 @@ function MiniMap:ShowHelp()
     end
 end
 
-local pendingClearConfirm = nil
+function MiniMap:ShowResearchDupes()
+    local items = {}
+    local bags = { BAG_BACKPACK }
+    local epicQuality = ITEM_QUALITY_ARCANE or 4
+    if IsBankOpen then
+        table.insert(bags, BAG_BANK)
+    end
+
+    for _, bag in ipairs(bags) do
+        local bagName = (bag == BAG_BANK) and "bank" or "backpack"
+        for slot = 0, GetBagSize(bag) - 1 do
+            local link = GetItemLink(bag, slot)
+            if link and link ~= "" then
+                local itemType = GetItemLinkItemType(link)
+                local name = GetItemLinkName(link)
+                local isHeavy = (itemType == 2 and GetItemLinkArmorType(link) == 3)
+                local isMedium = (itemType == 2 and GetItemLinkArmorType(link) == 2)
+                local isLight = (itemType == 2 and GetItemLinkArmorType(link) == 1)
+                local isWeapon = itemType == 1
+                local isJewelry = itemType == 3
+
+                if isLight or isMedium or isHeavy or isWeapon or isJewelry then
+                    local itemId = GetItemLinkItemId(link)
+                    local equipType = GetItemLinkEquipType(link)
+                    local armorType = GetItemLinkArmorType(link)
+                    local traitType = GetItemLinkTraitType(link)
+                    local quality = GetItemLinkQuality(link)
+
+                    if quality < epicQuality then
+                        local key
+                        if isWeapon then
+                            key = "w|" .. GetItemLinkWeaponType(link) .. "|" .. traitType
+                        elseif isJewelry then
+                            key = "j|" .. equipType .. "|" .. traitType
+                        else
+                            key = "a|" .. armorType .. "|" .. equipType .. "|" .. traitType
+                        end
+
+                        if not items[key] then
+                            items[key] = { name = name, itemId = itemId, traitType = traitType, quality = quality, count = 0, slots = {}, itemNames = {} }
+                        end
+
+                        items[key].count = items[key].count + 1
+                        table.insert(items[key].itemNames, name)
+
+                        if quality > items[key].quality then
+                            items[key].quality = quality
+                            items[key].name = name
+                        end
+
+                        table.insert(items[key].slots, bagName .. ":" .. slot)
+                    end
+                end
+            end
+        end
+    end
+
+    local dupes = {}
+    for _, data in pairs(items) do
+        if data.count > 1 then
+            table.insert(dupes, data)
+        end
+    end
+
+    if #dupes == 0 then
+        Print(self:Text("noResearchDupes"))
+        return
+    end
+
+    table.sort(dupes, function(a, b) return a.count > b.count end)
+
+    Print(string.format(self:Text("researchDupesFound"), #dupes))
+    for _, data in ipairs(dupes) do
+        local traitName = Locale.GetTraitName(data.traitType)
+        local keepStr = data.name .. " (" .. traitName .. ")"
+        local dupeCount = data.count - 1
+        local junkNames = {}
+        for _, n in ipairs(data.itemNames) do
+            if n ~= data.name then
+                table.insert(junkNames, n)
+            end
+        end
+        local junkStr = table.concat(junkNames, ", ")
+        Print(string.format("KEEP %s | JUNK x%d: %s", keepStr, dupeCount, junkStr))
+    end
+end
 
 function MiniMap:HandleSlashCommand(arguments)
     local command, value = zo_strmatch(arguments or "", "^(%S*)%s*(.*)$")
@@ -1261,6 +1347,8 @@ function MiniMap:HandleSlashCommand(arguments)
         else
             Print(self:Text("noRouteActive"))
         end
+    elseif command == "research" or command == "dupes" then
+        self:ShowResearchDupes()
     else
         self:ShowHelp()
     end

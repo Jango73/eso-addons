@@ -37,11 +37,36 @@ Locale.STRINGS = {
         helpRoute = '/minimap route <category1 category2 ...>|all',
         helpRouteClear = '/minimap route clear',
         helpRouteInfo = '/minimap route info',
-        helpSettings = '/minimapsettings',
-        usageAdd = 'Usage: /minimap add %s',
-        usageClear = 'Usage: /minimap clear <category>|all|cancel',
-        usageRoute = 'Usage: /minimap route <category1 category2 ...>|all',
-        usageRouteAvailable = 'Available: %s',
+        helpResearch = '/minimap research - show researchable item duplicates',
+        noResearchDupes = 'No duplicates found.',
+        researchDupesFound = 'Found %d duplicates:',
+        trait1 = 'Sturdy',
+        trait2 = 'Well-Fitted',
+        trait3 = 'Impenetrable',
+        trait4 = 'Reinforced',
+        trait5 = 'Training',
+        trait6 = 'Infused',
+        trait7 = 'Prosperous',
+        trait8 = 'Divines',
+        trait9 = 'Nirnhoned',
+        trait10 = 'Ornate',
+        trait11 = 'Intricate',
+        trait12 = 'Powered',
+        trait13 = 'Charged',
+        trait14 = 'Precise',
+        trait15 = 'Defending',
+        trait16 = 'Sharpened',
+        trait17 = 'Decisive',
+        trait18 = 'Nirnhoned',
+        trait19 = 'Bloodthirsty',
+        trait20 = 'Swift',
+        trait21 = 'Healthy',
+        trait22 = 'Robust',
+        trait23 = 'Arcane',
+        trait24 = 'Harmony',
+        trait25 = 'Infused',
+        trait26 = 'Triune',
+        trait27 = 'Protective',
         settingsMissing = 'LibAddonMenu-2.0 is missing: the settings menu will not be created.',
         positionName = 'Position',
         positionTooltip = 'Minimap position on the screen.',
@@ -650,4 +675,25 @@ end
 function Locale.GetCompassDirection(direction)
     local key = "compass" .. direction
     return Locale.GetString(key)
+end
+
+function Locale.GetTraitName(traitType)
+    if traitType == nil then
+        return "Trait ?"
+    end
+
+    if GetString then
+        local esoTraitName = GetString("SI_ITEMTRAITTYPE", traitType)
+        if esoTraitName and esoTraitName ~= "" then
+            return esoTraitName
+        end
+    end
+
+    local fallbackKey = "trait" .. tostring(traitType)
+    local fallbackName = Locale.GetString(fallbackKey)
+    if fallbackName ~= fallbackKey then
+        return fallbackName
+    end
+
+    return "Trait #" .. tostring(traitType)
 end
