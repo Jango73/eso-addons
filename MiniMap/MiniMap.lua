@@ -533,8 +533,8 @@ function MiniMap:RegisterSettingsMenu()
                 return self.saved.zoom or DEFAULTS.zoom
             end,
             setFunc = function(value)
-                self.saved.zoom = MiniMapRenderUtils.Clamp(value, 2, 16)
-                self:UpdateMap()
+                self.saved.zoom = MiniMapRenderUtils.Clamp(value, 1, 16)
+                self:RefreshMap(true)
             end,
             default = DEFAULTS.zoom,
             width = 'full',
@@ -936,7 +936,7 @@ function MiniMap:RefreshMap(force)
     self.nextMapRefreshMs = now + MINIMAP_REFRESH_MS
 
     local mapType = GetMapType and GetMapType() or MAPTYPE_ZONE
-    self.isCityMap = (mapType == MAPTYPE_SUBZONE)
+    self.isCityMap = (mapType == MAPTYPE_SUBZONE or GetMapContentType and GetMapContentType() == MAP_CONTENT_HOUSE)
 
     local mapKey = MiniMapRenderUtils.GetCurrentMapKey()
     local numHorizontalTiles, numVerticalTiles = 0, 0
@@ -1142,7 +1142,7 @@ function MiniMap:HandleSlashCommand(arguments)
             return
         end
 
-        self.saved.zoom = MiniMapRenderUtils.Clamp(zoom, 2, 16)
+        self.saved.zoom = MiniMapRenderUtils.Clamp(zoom, 1, 16)
         self:ApplyLayout()
         Print(string.format(self:Text("zoomChanged"), self.saved.zoom))
     elseif command == "hide" or command == "masquer" then
