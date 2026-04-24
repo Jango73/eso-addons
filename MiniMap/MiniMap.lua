@@ -1041,16 +1041,16 @@ function MiniMap:ShowResearchDupes()
             local link = GetItemLink(bag, slot)
             if link and link ~= "" then
                 local itemType = GetItemLinkItemType(link)
+                local equipType = GetItemLinkEquipType(link)
                 local name = GetItemLinkName(link)
                 local isHeavy = (itemType == 2 and GetItemLinkArmorType(link) == 3)
                 local isMedium = (itemType == 2 and GetItemLinkArmorType(link) == 2)
                 local isLight = (itemType == 2 and GetItemLinkArmorType(link) == 1)
                 local isWeapon = itemType == 1
-                local isJewelry = itemType == 3
+                local isJewelry = (itemType == 3) or (equipType == EQUIP_TYPE_RING) or (equipType == EQUIP_TYPE_NECK)
 
                 if isLight or isMedium or isHeavy or isWeapon or isJewelry then
                     local itemId = GetItemLinkItemId(link)
-                    local equipType = GetItemLinkEquipType(link)
                     local armorType = GetItemLinkArmorType(link)
                     local traitType = GetItemLinkTraitType(link)
                     local quality = GetItemLinkQuality(link)
