@@ -7,7 +7,7 @@ TARGET_FILE="$ROOT_DIR/MiniMap/MiniMapData.lua"
 
 usage() {
     cat <<'EOF'
-Usage: scripts/import-default-spots.sh source.lua
+Usage: scripts/merge-saved-spots.sh source.lua
 
 Imports MiniMapSpots from source.lua into MiniMap/MiniMapData.lua,
 using MiniMapDefaultSpots as the target table.

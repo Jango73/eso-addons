@@ -84,7 +84,7 @@ Useful commands:
 The addon ships with a small default spot database in `MiniMap/MiniMapData.lua`. This default database is barely started and will grow over time as you collect resource spots while playing. The more you play, the more complete it becomes. To merge spots from an exported `MiniMapSpots` saved-variable file into that bundled data table, run:
 
 ```bash
-scripts/import-default-spots.sh source.lua
+scripts/merge-saved-spots.sh source.lua
 ```
 
 This is a merge, not a replacement. Existing bundled spots are kept, source spots are added only when they are not duplicates, and duplicate detection uses the addon threshold `MINIMAP_SPOT_DUPLICATE_THRESHOLD`.
