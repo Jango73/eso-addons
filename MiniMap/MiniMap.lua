@@ -615,19 +615,6 @@ function MiniMap:RegisterSettingsMenu()
             default = DEFAULTS.showNotes,
             width = 'full',
         },
-        {
-            type = 'checkbox',
-            name = self:Text('autoSelectNearestQuestName'),
-            tooltip = self:Text('autoSelectNearestQuestTooltip'),
-            getFunc = function()
-                return self.saved.autoSelectNearestQuest
-            end,
-            setFunc = function(value)
-                self.saved.autoSelectNearestQuest = value
-            end,
-            default = DEFAULTS.autoSelectNearestQuest,
-            width = 'full',
-        },
     }
 
     LAM:RegisterAddonPanel('MiniMapSettings', panelData)
@@ -653,68 +640,6 @@ function MiniMap:GetFocusedQuestIndex()
     end
 
     return nil
-end
-
-function MiniMap:SelectNearestQuestWithObjective()
-    CHAT_ROUTER:AddDebugMessage("MiniMap:SelectNearestQuestWithObjective()")
-
-    if not WORLD_MAP_QUEST_BREADCRUMBS or not self.playerMapX or not self.playerMapY then
-        return
-    end
-
-    local numQuests = GetNumJournalQuests()
-    if not numQuests or numQuests == 0 then
-        return
-    end
-
-    local bestQuestIndex = nil
-    local bestDistanceSq = nil
-    local questsProcessed = 0
-    local bestQuestName = nil
-
-    for questIndex = 1, numQuests do
-        local questName, _, _, _, _, _, _, _, _, _, _, _, questType = GetJournalQuestInfo(questIndex)
-        if questName then
-            local mainStepIndex = QUEST_MAIN_STEP_INDEX or 1
-            local numSteps = GetJournalQuestNumSteps and GetJournalQuestNumSteps(questIndex) or mainStepIndex
-
-            for stepIndex = mainStepIndex, numSteps do
-                local numPositions = WORLD_MAP_QUEST_BREADCRUMBS:GetNumQuestConditionPositions(questIndex, stepIndex)
-                if numPositions then
-                    for conditionIndex = 1, numPositions do
-                        local positionData = WORLD_MAP_QUEST_BREADCRUMBS:GetQuestConditionPosition(questIndex, stepIndex, conditionIndex)
-                        if positionData and positionData.insideCurrentMapWorld and positionData.xLoc and positionData.yLoc then
-                            questsProcessed = questsProcessed + 1
-                            local dx = positionData.xLoc - self.playerMapX
-                            local dy = positionData.yLoc - self.playerMapY
-                            local distanceSq = (dx * dx) + (dy * dy)
-                            if not bestDistanceSq or distanceSq < bestDistanceSq then
-                                bestDistanceSq = distanceSq
-                                bestQuestIndex = questIndex
-                                bestQuestName = questName
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
-
-    if questsProcessed > 0 then
-        CHAT_ROUTER:AddDebugMessage(string.format("[MiniMap] Quests processed: %d", questsProcessed))
-    end
-
-    if bestQuestIndex then
-        if QUEST_JOURNAL_MANAGER and QUEST_JOURNAL_MANAGER.SetActiveQuestIndex then
-            QUEST_JOURNAL_MANAGER:SetActiveQuestIndex(bestQuestIndex)
-        end
-        CHAT_ROUTER:AddDebugMessage(string.format("[MiniMap] Selected quest: %s (index %d)", bestQuestName or "Unknown", bestQuestIndex))
-        return true
-    end
-
-    CHAT_ROUTER:AddDebugMessage("[MiniMap] No quest found")
-
-    return false
 end
 
 function MiniMap:GetActiveQuestTargetPosition()
@@ -1389,13 +1314,6 @@ function MiniMap:Initialize()
             EVENT_MANAGER:RegisterForUpdate(ADDON_NAME .. "Update", MiniMap.saved.refreshRate or 500, OnMinimapUpdate)
         end
 
-        if MiniMap._questSelectTimer and MiniMap._questSelectTimer > 0 then
-            if GetGameTimeMilliseconds() >= MiniMap._questSelectTimer then
-                MiniMap._questSelectTimer = 0
-                MiniMap:SelectNearestQuestWithObjective()
-            end
-        end
-
         local sceneShown = MiniMap:IsWorldMapShowing()
 
         if not sceneShown then
@@ -1443,23 +1361,6 @@ function MiniMap:Initialize()
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_ZONE_CHANGED", EVENT_ZONE_CHANGED, function()
         RefreshMapAfterLocationChange()
     end)
-
-    MiniMap._questSelectTimer = 0
-
-    local function OnQuestCompleted(eventCode, questIndex)
-        if questIndex and MiniMap.saved.autoSelectNearestQuest then
-            MiniMap._questSelectTimer = GetGameTimeMilliseconds() + 2500
-        end
-    end
-
-    local function OnQuestAdvanced(eventCode, questIndex, questName, isPushed, isComplete, mainStepChanged)
-        if isComplete and MiniMap.saved.autoSelectNearestQuest then
-            MiniMap._questSelectTimer = GetGameTimeMilliseconds() + 2500
-        end
-    end
-
-    EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_QUEST_COMPLETED", EVENT_QUEST_COMPLETED, OnQuestCompleted)
-    EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_QUEST_ADVANCED", EVENT_QUEST_ADVANCED, OnQuestAdvanced)
 
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_LOOT_UPDATED", EVENT_LOOT_UPDATED, function()
         local lootName, actionName, isOwned = GetLootTargetInfo()
