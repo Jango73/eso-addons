@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-04-24
+
+### Added
+- New `/minimap research` (alias `/minimap dupes`) command to list duplicate researchable items from backpack and bank
+- Trait name resolution helper for clearer duplicate reports
+- Updated default spot database with many new markers across multiple maps
+
+### Changed
+- Removed automatic nearest quest selection feature and related setting from the addon menu
+
+### Fixed
+- Duplicate researchable item detection logic to group items more reliably by equipment/trait
+
 ## [1.1.001] - 2026-04-23
 
 ### Added
