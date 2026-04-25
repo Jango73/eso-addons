@@ -692,10 +692,12 @@ function MiniMap:RegisterSettingsMenu()
                 .. self:Text('helpResources') .. "\n\n"
                 .. self:Text('helpRoutes') .. "\n\n"
                 .. self:Text('helpNotes') .. "\n\n"
+                .. self:Text('helpResearchSort') .. "\n\n"
                 .. self:Text('helpCommandsTitle') .. "\n"
                 .. self:Text('helpSettings') .. "\n"
                 .. self:Text('helpVisibility') .. "\n"
-                .. self:Text('helpRoute'),
+                .. self:Text('helpRoute') .. "\n"
+                .. self:Text('helpResearch'),
             width = 'full',
         },
         {
@@ -1310,6 +1312,7 @@ function MiniMap:ShowHelp()
         "helpRouteClear",
         "helpRouteInfo",
         "helpResearch",
+        "helpResearchSort",
     }
 
     for _, key in ipairs(helpLines) do

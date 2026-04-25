@@ -9,8 +9,11 @@ MiniMap is an Elder Scrolls Online addon that adds a compact minimap with resour
 - Edge indicators for off-map points of interest.
 - Route calculation across selected resource categories.
 - Optional notes panel.
-- Configurable size, opacity, position, refresh rate, toolbar, and auto-save behavior.
-- Localized in-game help. English and French are included first.
+- Research duplicate detection for researchable trait gear (backpack + bank).
+- Red `X` overlay in inventory/bank/merchant sell view on items selected as sellable duplicates.
+- Research duplicate quality filters (rare / epic / legendary).
+- Configurable size, opacity, position, refresh rate, toolbar, notes panel, and auto-save behavior.
+- Localized strings for `en`, `fr`, `es`, `ja`, `de`, `ru`, `zh`.
 
 ## Requirements
 
@@ -62,7 +65,13 @@ Common commands:
 /minimap orientation north
 /minimap orientation player
 /minimap route all
+/minimap route <category...>
+/minimap route info
 /minimap route clear
+/minimap routeclear
+/minimap routeinfo
+/minimap research
+/minimap dupes
 ```
 
 ## Resource Spots
@@ -105,6 +114,16 @@ Routes can be calculated for selected resource categories or for all known resou
 ## Notes
 
 The notes panel can be enabled or disabled in the settings panel. Notes are stored in the `MiniMapNotes` saved variable.
+
+## Research Duplicates
+
+`/minimap research` (alias `/minimap dupes`) analyzes researchable trait duplicates across backpack and bank, picks one item to keep in each duplicate group, and reports sellable duplicates.
+
+Matching items are also marked in list UIs with a red `X` overlay:
+
+- Player inventory
+- Bank inventory
+- Merchant sell view
 
 ## Packaging
 
