@@ -45,6 +45,7 @@ When asked to "do a release", follow this sequence:
 2. Build changelog notes from Git history since the previous release.
 3. Run packaging with the existing script.
 4. Commit release changes and create a version tag.
+5. Push branch + tag and create the GitHub release.
 
 ### 1) Bump version (without changelog edits)
 
@@ -104,3 +105,21 @@ After a successful packaging run in a release flow:
   - `git tag -a vX.Y.Z -m "Version X.Y.Z"`
 
 Tag format must be exactly `vN.N.N` and tag message must be exactly `Version N.N.N`.
+
+### 5) Push + GitHub Release
+
+Still only for an explicit release flow.
+
+- Push current branch:
+  - `git push origin <branch>`
+- Push release tag:
+  - `git push origin vX.Y.Z`
+- Create GitHub release from the tag:
+  - Tag: `vX.Y.Z`
+  - Title: `Version X.Y.Z`
+  - Description: the `## [X.Y.Z] - YYYY-MM-DD` section content from `MiniMap/CHANGELOG.md`
+  - Asset: `dist/MiniMap-X.Y.Z.zip`
+
+CLI example:
+
+- `gh release create vX.Y.Z dist/MiniMap-X.Y.Z.zip --title "Version X.Y.Z" --notes-file /tmp/release-notes-X.Y.Z.md`
