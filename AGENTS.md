@@ -36,3 +36,71 @@ MiniMap/
 
 - MiniMapSavedVariables: settings
 - MiniMapSpots: resource spots
+
+## Release Procedure
+
+When asked to "do a release", follow this sequence:
+
+1. Update version everywhere **except** the changelog first.
+2. Build changelog notes from Git history since the previous release.
+3. Run packaging with the existing script.
+4. Commit release changes and create a version tag.
+
+### 1) Bump version (without changelog edits)
+
+Update release version consistently in:
+
+- `MiniMap/MiniMap.txt`
+  - `## Version: X.Y.Z`
+  - `## AddOnVersion: NNNNN` (increment consistently with the release)
+- `MiniMap/MiniMap.lua`
+  - settings panel `version = 'X.Y.Z'`
+- Any release-facing docs/examples that show the current zip/version (README, publishing docs, script examples) when they are meant to reflect the current release.
+
+Do not edit `MiniMap/CHANGELOG.md` in this step.
+
+### 2) Generate changelog from Git
+
+Use Git commits after the previous release (tag or release commit) and summarize into `Added`, `Changed`, `Fixed`:
+
+- Find previous release reference (example):
+  - `git describe --tags --abbrev=0`
+- Inspect commits since that point:
+  - `git log --oneline <previous_release>..HEAD -- MiniMap`
+- Inspect relevant diffs when wording notes:
+  - `git show --name-only <commit>`
+  - `git show <commit> -- <files>`
+
+Then add a new top section in `MiniMap/CHANGELOG.md`:
+
+- `## [X.Y.Z] - YYYY-MM-DD`
+- Keep entries factual and based on actual commits.
+- Do not rewrite older release sections unless explicitly requested.
+
+### 3) Package
+
+From repository root:
+
+- `scripts/package-addons.sh`
+
+Expected artifact:
+
+- `dist/MiniMap-X.Y.Z.zip`
+
+Quick verification:
+
+- Ensure the archive root contains `MiniMap/` (no extra parent folder like `AddOns/` or `MiniMap-X.Y.Z/`).
+
+### 4) Commit + Tag
+
+Only for an explicit release flow ("do a release"). Do not commit/tag for regular feature or fix tasks.
+
+After a successful packaging run in a release flow:
+
+- Commit release files:
+  - `git add AGENTS.md MiniMap/MiniMap.txt MiniMap/MiniMap.lua MiniMap/CHANGELOG.md README.md PUBLISHING.md scripts/package-addons.sh`
+  - `git commit -m "Version X.Y.Z"`
+- Create an annotated tag:
+  - `git tag -a vX.Y.Z -m "Version X.Y.Z"`
+
+Tag format must be exactly `vN.N.N` and tag message must be exactly `Version N.N.N`.
