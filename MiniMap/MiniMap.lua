@@ -1462,7 +1462,7 @@ function MiniMap:ShowResearchDupes()
             local fallbackName = (data.name and data.name ~= "") and data.name or "Unknown item"
             junkStr = string.format("%s x%d", fallbackName, dupeCount)
         end
-        Print(string.format("Can sell: %s (have %s)", junkStr, keepStr))
+        Print(string.format(self:Text("researchCanSellLine"), junkStr, keepStr))
     end
 end
 
