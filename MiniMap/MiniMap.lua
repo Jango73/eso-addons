@@ -615,6 +615,50 @@ function MiniMap:RegisterSettingsMenu()
             default = DEFAULTS.showNotes,
             width = 'full',
         },
+        {
+            type = 'header',
+            name = self:Text('researchFiltersHeader'),
+            width = 'full',
+        },
+        {
+            type = 'checkbox',
+            name = self:Text('researchIncludeRareName'),
+            tooltip = self:Text('researchIncludeRareTooltip'),
+            getFunc = function()
+                return self.saved.researchIncludeRare ~= false
+            end,
+            setFunc = function(value)
+                self.saved.researchIncludeRare = value
+            end,
+            default = DEFAULTS.researchIncludeRare,
+            width = 'full',
+        },
+        {
+            type = 'checkbox',
+            name = self:Text('researchIncludeEpicName'),
+            tooltip = self:Text('researchIncludeEpicTooltip'),
+            getFunc = function()
+                return self.saved.researchIncludeEpic == true
+            end,
+            setFunc = function(value)
+                self.saved.researchIncludeEpic = value
+            end,
+            default = DEFAULTS.researchIncludeEpic,
+            width = 'full',
+        },
+        {
+            type = 'checkbox',
+            name = self:Text('researchIncludeLegendaryName'),
+            tooltip = self:Text('researchIncludeLegendaryTooltip'),
+            getFunc = function()
+                return self.saved.researchIncludeLegendary == true
+            end,
+            setFunc = function(value)
+                self.saved.researchIncludeLegendary = value
+            end,
+            default = DEFAULTS.researchIncludeLegendary,
+            width = 'full',
+        },
     }
 
     LAM:RegisterAddonPanel('MiniMapSettings', panelData)
@@ -1030,7 +1074,9 @@ end
 function MiniMap:ShowResearchDupes()
     local items = {}
     local bags = { BAG_BACKPACK }
-    local epicQuality = ITEM_QUALITY_ARCANE or 4
+    local rareQuality = ITEM_QUALITY_ARCANE or 3
+    local epicQuality = ITEM_QUALITY_ARTIFACT or 4
+    local legendaryQuality = ITEM_QUALITY_LEGENDARY or 5
     if IsBankOpen then
         table.insert(bags, BAG_BANK)
     end
@@ -1054,8 +1100,17 @@ function MiniMap:ShowResearchDupes()
                     local armorType = GetItemLinkArmorType(link)
                     local traitType = GetItemLinkTraitType(link)
                     local quality = GetItemLinkQuality(link)
+                    local includeQuality = true
 
-                    if quality < epicQuality then
+                    if quality == rareQuality then
+                        includeQuality = self.saved.researchIncludeRare ~= false
+                    elseif quality == epicQuality then
+                        includeQuality = self.saved.researchIncludeEpic == true
+                    elseif quality == legendaryQuality then
+                        includeQuality = self.saved.researchIncludeLegendary == true
+                    end
+
+                    if includeQuality then
                         local key
                         if isWeapon then
                             key = "w|" .. GetItemLinkWeaponType(link) .. "|" .. traitType
