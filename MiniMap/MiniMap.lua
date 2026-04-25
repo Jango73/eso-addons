@@ -1153,6 +1153,7 @@ function MiniMap:ShowResearchDupes()
 
     table.sort(dupes, function(a, b) return a.count > b.count end)
 
+    Print("--------------------")
     Print(string.format(self:Text("researchDupesFound"), #dupes))
     for _, data in ipairs(dupes) do
         local traitName = Locale.GetTraitName(data.traitType)
@@ -1165,7 +1166,7 @@ function MiniMap:ShowResearchDupes()
             end
         end
         local junkStr = table.concat(junkNames, ", ")
-        Print(string.format("KEEP %s | JUNK x%d: %s", keepStr, dupeCount, junkStr))
+        Print(string.format("Can sell: %s (have %s)", junkStr, keepStr))
     end
 end
 
