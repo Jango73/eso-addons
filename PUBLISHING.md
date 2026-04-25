@@ -13,7 +13,7 @@ scripts/package-addons.sh
 For the current repository, this creates:
 
 ```text
-dist/MiniMap-1.0.0.zip
+dist/MiniMap-1.3.0.zip
 ```
 
 The archive is expected to contain the addon folder at its root:
@@ -25,7 +25,7 @@ MiniMap/
   ...
 ```
 
-Do not upload an archive that contains an extra parent folder such as `AddOns/` or `MiniMap-1.0.0/`.
+Do not upload an archive that contains an extra parent folder such as `AddOns/` or `MiniMap-1.3.0/`.
 
 ## First Upload
 
@@ -101,8 +101,8 @@ Use ESOUI's test endpoint before doing the real update:
 ```bash
 curl -H "x-api-token: $ESOUI_TOKEN" \
   -F "id=ADDON_ID" \
-  -F "version=1.0.1" \
-  -F "updatefile=@dist/MiniMap-1.0.1.zip" \
+  -F "version=1.3.0" \
+  -F "updatefile=@dist/MiniMap-1.3.0.zip" \
   https://api.esoui.com/addons/updatetest
 ```
 
@@ -111,8 +111,8 @@ If the test succeeds, upload the real update:
 ```bash
 curl -H "x-api-token: $ESOUI_TOKEN" \
   -F "id=ADDON_ID" \
-  -F "version=1.0.1" \
-  -F "updatefile=@dist/MiniMap-1.0.1.zip" \
+  -F "version=1.3.0" \
+  -F "updatefile=@dist/MiniMap-1.3.0.zip" \
   https://api.esoui.com/addons/update
 ```
 

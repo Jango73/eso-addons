@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-04-25
+
+### Added
+- Red `X` overlay in inventory, bank, and merchant sell views for research-duplicate items identified as sellable
+- New settings to include or exclude rare, epic, and legendary items in research-duplicate analysis
+- New localized help and UI strings for research-duplicate sorting and settings in all supported languages (`en`, `fr`, `es`, `ja`, `de`, `ru`, `zh`)
+
+### Changed
+- `/minimap research` output now focuses on sell recommendations (`Can sell ... (have ...)`) for faster manual sorting
+- Research-duplicate detection now uses cached results with automatic invalidation on inventory/bank/store changes for consistent overlays and command output
+- City minimap default zoom updated (`MINIMAP_CITY_ZOOM` from `4` to `2`)
+
+### Fixed
+- Research-duplicate grouping logic refactored to reduce false positives and better keep one best item per duplicate group
+- Excluded non-research traits (notably ornate/intricate) from duplicate detection
+- Localized research-duplicate result line formatting (removed hardcoded English line)
+
 ## [1.2.0] - 2026-04-24
 
 ### Added

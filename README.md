@@ -37,7 +37,7 @@ MiniMap/MiniMap.txt
 Do not install it as:
 
 ```text
-AddOns/MiniMap-1.0.0/MiniMap/
+AddOns/MiniMap-1.3.0/MiniMap/
 AddOns/AddOns/MiniMap/
 ```
 
