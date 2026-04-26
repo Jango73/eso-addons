@@ -8,6 +8,7 @@
 ## SavedVariables: MiniMapSpots
 ## SavedVariables: MiniMapNotes
 
+MiniMapDebug.lua
 MiniMapConstants.lua
 MiniMapRenderUtils.lua
 Locale.lua

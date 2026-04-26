@@ -25,7 +25,7 @@ MiniMap/
 - Renderer pattern: `Init(owner)`, `Update(...)`, `ApplyLayout(size)`
 - Iterate categories with `ForEachCategory(callback)` using RESOURCE_CATEGORIES
 - Private vars use underscore prefix (`_data`, `_selectedCategories`)
-- For debugging, use Debug() and DebugCoalesced()
+- **FOR DEBUGGING, USE Debug() AND DebugCoalesced() FROM MiniMapDebug.lua AND NOTHING ELSE**
 
 ## Dependencies
 
