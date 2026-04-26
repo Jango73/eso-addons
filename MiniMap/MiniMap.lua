@@ -559,6 +559,9 @@ function MiniMap:CreateControls()
             return self.routeRenderer:GetNearestRoutePoint(self.playerMapX, self.playerMapY)
         end,
     })
+
+    self.worldMapOverlay = WorldMapOverlay
+    self.worldMapOverlay:Init()
 end
 
 function MiniMap:ApplyLayout()
@@ -937,11 +940,12 @@ end
 function MiniMap:GetActiveQuestTargetPosition()
     local questIndex = self:GetFocusedQuestIndex()
     if not questIndex or not WORLD_MAP_QUEST_BREADCRUMBS or not self.playerMapX or not self.playerMapY then
-        return nil
+        return nil, nil
     end
 
     local bestX, bestY
     local bestDistanceSq
+    local isBestBreadcrumb = false
     local mainStepIndex = QUEST_MAIN_STEP_INDEX or 1
     local numSteps = GetJournalQuestNumSteps and GetJournalQuestNumSteps(questIndex) or mainStepIndex
 
@@ -954,10 +958,19 @@ function MiniMap:GetActiveQuestTargetPosition()
                     local dx = positionData.xLoc - self.playerMapX
                     local dy = positionData.yLoc - self.playerMapY
                     local distanceSq = (dx * dx) + (dy * dy)
+                    local isBreadcrumb = positionData.isBreadcrumb
+
                     if not bestDistanceSq or distanceSq < bestDistanceSq then
                         bestDistanceSq = distanceSq
                         bestX = positionData.xLoc
                         bestY = positionData.yLoc
+                        isBestBreadcrumb = isBreadcrumb
+                    elseif isBreadcrumb and not isBestBreadcrumb then
+                    elseif not isBreadcrumb and isBestBreadcrumb then
+                        bestDistanceSq = distanceSq
+                        bestX = positionData.xLoc
+                        bestY = positionData.yLoc
+                        isBestBreadcrumb = false
                     end
                 end
             end
@@ -965,7 +978,7 @@ function MiniMap:GetActiveQuestTargetPosition()
     end
 
     if bestX and bestY then
-        return bestX, bestY
+        return bestX, bestY, isBestBreadcrumb
     end
 
     local now = GetFrameTimeMilliseconds and GetFrameTimeMilliseconds() or 0
@@ -974,7 +987,7 @@ function MiniMap:GetActiveQuestTargetPosition()
         WORLD_MAP_QUEST_BREADCRUMBS:RefreshQuest(questIndex)
     end
 
-    return nil
+    return nil, nil
 end
 
 local POI_TYPE_WAYSHRINE = 1
@@ -1686,6 +1699,22 @@ function MiniMap:Initialize()
             if MiniMap.noteRenderer then MiniMap.noteRenderer:CloseEditor() end
             if MiniMap.noteRenderer and MiniMap.noteRenderer.notesPanel then MiniMap.noteRenderer.notesPanel:SetHidden(true) end
             lastMapOpen = true
+
+            if MiniMap.worldMapOverlay and MiniMap.questIndicatorWayshrineX then
+                local qx, qy, isBreadcrumb = MiniMap:GetActiveQuestTargetPosition()
+                if qx and qy and not isBreadcrumb then
+                    local wayshrineX, wayshrineY = MiniMap:GetNearestKnownWayshrineToPosition(qx, qy)
+                    if wayshrineX then
+                        MiniMap.worldMapOverlay:Update(wayshrineX, wayshrineY)
+                    else
+                        MiniMap.worldMapOverlay:Hide()
+                    end
+                else
+                    MiniMap.worldMapOverlay:Hide()
+                end
+            else
+                MiniMap.worldMapOverlay:Hide()
+            end
         elseif not MiniMap.saved.hidden then
             local isHudShowing = MiniMap:IsHudShowing()
             MiniMap:UpdateToolbarVisibility(isHudShowing)

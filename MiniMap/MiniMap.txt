@@ -20,4 +20,5 @@ SpotRenderer.lua
 RouteRenderer.lua
 IndicatorRenderer.lua
 NoteRenderer.lua
+WorldMapOverlay.lua
 MiniMap.lua
