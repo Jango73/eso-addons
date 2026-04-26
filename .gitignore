@@ -1,9 +1,8 @@
-.aider
-.codex
-LibFilters-3.0/
-LibAddonMenu-2.0/
-temp/
-MiniMap/temp/
-dist/
-__pycache__/
-*.py[cod]
+/*
+!.gitignore
+!MiniMap/
+!MiniMap/**
+!scripts/
+!scripts/**
+!*.md
+scripts/__pycache__/*
