@@ -208,6 +208,7 @@ local function BuildResearchDuplicateGroups(saved, includeBank)
                         local name = GetItemLinkName(link)
                         local equipType = GetItemLinkEquipType(link)
                         local itemType = GetItemLinkItemType(link)
+                        local uniqueId = GetItemUniqueId(bag, slot)
 
                         local key
                         if itemType == ITEMTYPE_WEAPON then
@@ -238,6 +239,7 @@ local function BuildResearchDuplicateGroups(saved, includeBank)
                             bagName = bagName,
                             name = name,
                             quality = quality,
+                            uniqueId = uniqueId,
                         }
 
                         group.count = group.count + 1
@@ -266,21 +268,20 @@ local function BuildResearchDuplicateResults(saved, includeBank)
     local dupes = {}
     local sellSlots = {}
     local keepSlots = {}
+    local sellToKeepIds = {}
 
     for _, data in pairs(groups) do
         if data.count > 1 then
             table.insert(dupes, data)
-            if data.keepSlot then
-                keepSlots[data.keepSlot.bag] = keepSlots[data.keepSlot.bag] or {}
-                keepSlots[data.keepSlot.bag][data.keepSlot.slot] = true
+            if data.keepSlot and data.keepSlot.uniqueId then
+                keepSlots[data.keepSlot.uniqueId] = true
             end
             for _, slotData in ipairs(data.slots) do
                 local isKeepSlot = data.keepSlot
-                    and slotData.bag == data.keepSlot.bag
-                    and slotData.slot == data.keepSlot.slot
-                if not isKeepSlot then
-                    sellSlots[slotData.bag] = sellSlots[slotData.bag] or {}
-                    sellSlots[slotData.bag][slotData.slot] = true
+                    and slotData.uniqueId == data.keepSlot.uniqueId
+                if not isKeepSlot and slotData.uniqueId then
+                    sellSlots[slotData.uniqueId] = true
+                    sellToKeepIds[slotData.uniqueId] = data.keepSlot.uniqueId
                 end
             end
         end
@@ -288,12 +289,10 @@ local function BuildResearchDuplicateResults(saved, includeBank)
 
     table.sort(dupes, function(a, b) return a.count > b.count end)
     local sellCount = 0
-    for _, bySlot in pairs(sellSlots) do
-        for _ in pairs(bySlot) do
-            sellCount = sellCount + 1
-        end
+    for _ in pairs(sellSlots) do
+        sellCount = sellCount + 1
     end
-    return dupes, sellSlots, keepSlots
+    return dupes, sellSlots, keepSlots, sellToKeepIds
 end
 
 local function GetSlotBagAndIndex(slotControl, slotData)
@@ -1317,22 +1316,49 @@ function MiniMap:IsResearchDuplicateSellSlot(bagId, slotIndex)
         return false
     end
 
-    if self._researchDuplicateCacheDirty or not self._researchDuplicateSellSlots then
-        -- Keep algorithm consistent with /minimap dupes: always evaluate backpack + bank.
-        local _, sellSlots, keepSlots = BuildResearchDuplicateResults(self.saved, true)
-        self._researchDuplicateSellSlots = sellSlots
-        self._researchDuplicateKeepSlots = keepSlots
-        self._researchDuplicateCacheDirty = false
-    end
-
-    if self._researchDuplicateKeepSlots
-        and self._researchDuplicateKeepSlots[bagId]
-        and self._researchDuplicateKeepSlots[bagId][slotIndex]
-    then
+    local uniqueId = GetItemUniqueId(bagId, slotIndex)
+    if not uniqueId then
         return false
     end
 
-    return self._researchDuplicateSellSlots[bagId] and self._researchDuplicateSellSlots[bagId][slotIndex] or false
+    if self._researchDuplicateCacheDirty or not self._researchDuplicateSellSlots then
+        -- Keep algorithm consistent with /minimap dupes: always evaluate backpack + bank.
+        local _, sellSlots, keepSlots, sellToKeepIds = BuildResearchDuplicateResults(self.saved, true)
+        self._researchDuplicateSellSlots = sellSlots
+        self._researchDuplicateKeepSlots = keepSlots
+        self._researchDuplicateSellToKeepIds = sellToKeepIds
+        self._researchDuplicateCacheDirty = false
+    end
+
+    if self._researchDuplicateKeepSlots[uniqueId] then
+        return false
+    end
+
+    return self._researchDuplicateSellSlots[uniqueId] or false
+end
+
+function MiniMap:GetResearchDuplicateKeepItemName(bagId, slotIndex)
+    local uniqueId = GetItemUniqueId(bagId, slotIndex)
+    if not uniqueId then
+        return nil
+    end
+
+    if self._researchDuplicateCacheDirty or not self._researchDuplicateSellToKeepIds then
+        self:IsResearchDuplicateSellSlot(bagId, slotIndex)
+    end
+
+    local keepId = self._researchDuplicateSellToKeepIds and self._researchDuplicateSellToKeepIds[uniqueId]
+    if keepId then
+        for _, searchBag in ipairs({ BAG_BACKPACK, BAG_BANK }) do
+            local searchBagSize = GetBagSize and GetBagSize(searchBag) or 0
+            for searchSlot = 0, searchBagSize - 1 do
+                if GetItemUniqueId(searchBag, searchSlot) == keepId then
+                    return GetItemName(searchBag, searchSlot)
+                end
+            end
+        end
+    end
+    return nil
 end
 
 function MiniMap:UpdateResearchDuplicateSlotOverlay(slotControl, slotData)
@@ -1342,11 +1368,10 @@ function MiniMap:UpdateResearchDuplicateSlotOverlay(slotControl, slotData)
 
     local researchIndicator = GetSlotResearchIndicator(slotControl)
     local overlay = slotControl._researchDuplicateOverlay
+    local keepLabel = slotControl._researchDuplicateKeepLabel
     local bagId, slotIndex = GetSlotBagAndIndex(slotControl, slotData)
-    local controlName = slotControl.GetName and slotControl:GetName() or "<unnamed>"
 
     if not researchIndicator then
-        -- Fallback: place the X where the loupe usually appears on slot button.
         local anchorTarget = slotControl:GetNamedChild("Icon")
         if not anchorTarget then
             anchorTarget = slotControl
@@ -1361,10 +1386,44 @@ function MiniMap:UpdateResearchDuplicateSlotOverlay(slotControl, slotData)
             overlay:SetDrawLevel(20)
             slotControl._researchDuplicateOverlay = overlay
         end
+
+        if not keepLabel then
+            keepLabel = WINDOW_MANAGER:CreateControl(nil, slotControl, CT_LABEL)
+            keepLabel:SetFont("ZoFontGameSmall")
+            keepLabel:SetColor(0.2, 0.9, 0.2, 1)
+            keepLabel:SetDrawLayer(DL_OVERLAY)
+            keepLabel:SetDrawLevel(50)
+            keepLabel:SetWidth(200)
+            keepLabel:SetHorizontalAlignment(TEXT_ALIGN_LEFT)
+            keepLabel:SetWrapMode(TEXT_WRAP_MODE_TRUNCATE)
+            slotControl._researchDuplicateKeepLabel = keepLabel
+        end
+
         overlay:ClearAnchors()
         overlay:SetAnchor(CENTER, anchorTarget, CENTER, 0, 0)
+        overlay:SetDrawLevel(50)
+
         local shouldShowFallback = bagId ~= nil and slotIndex ~= nil and self:IsResearchDuplicateSellSlot(bagId, slotIndex)
         overlay:SetHidden(not shouldShowFallback)
+
+        if shouldShowFallback then
+            local keepName = self:GetResearchDuplicateKeepItemName(bagId, slotIndex)
+            if keepName then
+                keepLabel:ClearAnchors()
+                local iconControl = slotControl:GetNamedChild("Icon")
+                if iconControl then
+                    keepLabel:SetAnchor(TOPLEFT, iconControl, BOTTOMLEFT, 60, -8)
+                else
+                    keepLabel:SetAnchor(TOPLEFT, slotControl, TOPLEFT, 60, -8)
+                end
+                keepLabel:SetText(keepName)
+                keepLabel:SetHidden(false)
+            else
+                keepLabel:SetHidden(true)
+            end
+        else
+            keepLabel:SetHidden(true)
+        end
         return
     end
 
@@ -1375,8 +1434,20 @@ function MiniMap:UpdateResearchDuplicateSlotOverlay(slotControl, slotData)
         overlay:SetColor(1, 0.1, 0.1, 1)
         overlay:SetAnchor(CENTER, researchIndicator, CENTER, 0, 0)
         overlay:SetDrawLayer(DL_OVERLAY)
-        overlay:SetDrawLevel(20)
+        overlay:SetDrawLevel(50)
         slotControl._researchDuplicateOverlay = overlay
+    end
+
+    if not keepLabel then
+        keepLabel = WINDOW_MANAGER:CreateControl(nil, slotControl, CT_LABEL)
+        keepLabel:SetFont("ZoFontGameSmall")
+        keepLabel:SetColor(0.2, 0.9, 0.2, 1)
+        keepLabel:SetDrawLayer(DL_OVERLAY)
+        keepLabel:SetDrawLevel(50)
+        keepLabel:SetWidth(200)
+        keepLabel:SetHorizontalAlignment(TEXT_ALIGN_LEFT)
+        keepLabel:SetWrapMode(TEXT_WRAP_MODE_TRUNCATE)
+        slotControl._researchDuplicateKeepLabel = keepLabel
     end
 
     local shouldShow = bagId ~= nil and slotIndex ~= nil and self:IsResearchDuplicateSellSlot(bagId, slotIndex)
@@ -1385,6 +1456,25 @@ function MiniMap:UpdateResearchDuplicateSlotOverlay(slotControl, slotData)
     end
 
     overlay:SetHidden(not shouldShow)
+
+    if shouldShow then
+        local keepName = self:GetResearchDuplicateKeepItemName(bagId, slotIndex)
+        if keepName then
+            keepLabel:ClearAnchors()
+            local iconControl = slotControl:GetNamedChild("Icon")
+            if iconControl then
+                keepLabel:SetAnchor(TOPLEFT, iconControl, BOTTOMLEFT, 60, -8)
+            else
+                keepLabel:SetAnchor(TOPLEFT, slotControl, TOPLEFT, 60, -8)
+            end
+            keepLabel:SetText(keepName)
+            keepLabel:SetHidden(false)
+        else
+            keepLabel:SetHidden(true)
+        end
+    else
+        keepLabel:SetHidden(true)
+    end
 end
 
 function MiniMap:InstallResearchDuplicateOverlays()
