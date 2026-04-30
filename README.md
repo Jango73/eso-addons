@@ -28,6 +28,12 @@ Install the addon folder into your ESO AddOns directory:
 Elder Scrolls Online/live/AddOns/MiniMap/
 ```
 
+or
+
+```text
+~/.steam/debian-installation/steamapps/compatdata/306130/pfx/drive_c/users/steamuser/Documents/Elder Scrolls Online/live/AddOns
+```
+
 The manifest must be directly inside the addon folder:
 
 ```text
