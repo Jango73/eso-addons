@@ -269,6 +269,7 @@ local function BuildResearchDuplicateResults(saved, includeBank)
     local sellSlots = {}
     local keepSlots = {}
     local sellToKeepIds = {}
+    local sellToKeepTraitTypes = {}
 
     for _, data in pairs(groups) do
         if data.count > 1 then
@@ -282,6 +283,7 @@ local function BuildResearchDuplicateResults(saved, includeBank)
                 if not isKeepSlot and slotData.uniqueId then
                     sellSlots[slotData.uniqueId] = true
                     sellToKeepIds[slotData.uniqueId] = data.keepSlot.uniqueId
+                    sellToKeepTraitTypes[slotData.uniqueId] = data.traitType
                 end
             end
         end
@@ -292,7 +294,7 @@ local function BuildResearchDuplicateResults(saved, includeBank)
     for _ in pairs(sellSlots) do
         sellCount = sellCount + 1
     end
-    return dupes, sellSlots, keepSlots, sellToKeepIds
+    return dupes, sellSlots, keepSlots, sellToKeepIds, sellToKeepTraitTypes
 end
 
 local function GetSlotBagAndIndex(slotControl, slotData)
@@ -1323,10 +1325,11 @@ function MiniMap:IsResearchDuplicateSellSlot(bagId, slotIndex)
 
     if self._researchDuplicateCacheDirty or not self._researchDuplicateSellSlots then
         -- Keep algorithm consistent with /minimap dupes: always evaluate backpack + bank.
-        local _, sellSlots, keepSlots, sellToKeepIds = BuildResearchDuplicateResults(self.saved, true)
+        local _, sellSlots, keepSlots, sellToKeepIds, sellToKeepTraitTypes = BuildResearchDuplicateResults(self.saved, true)
         self._researchDuplicateSellSlots = sellSlots
         self._researchDuplicateKeepSlots = keepSlots
         self._researchDuplicateSellToKeepIds = sellToKeepIds
+        self._researchDuplicateSellToKeepTraitTypes = sellToKeepTraitTypes
         self._researchDuplicateCacheDirty = false
     end
 
@@ -1349,11 +1352,16 @@ function MiniMap:GetResearchDuplicateKeepItemName(bagId, slotIndex)
 
     local keepId = self._researchDuplicateSellToKeepIds and self._researchDuplicateSellToKeepIds[uniqueId]
     if keepId then
+        local traitType = self._researchDuplicateSellToKeepTraitTypes and self._researchDuplicateSellToKeepTraitTypes[uniqueId]
         for _, searchBag in ipairs({ BAG_BACKPACK, BAG_BANK }) do
             local searchBagSize = GetBagSize and GetBagSize(searchBag) or 0
             for searchSlot = 0, searchBagSize - 1 do
                 if GetItemUniqueId(searchBag, searchSlot) == keepId then
-                    return GetItemName(searchBag, searchSlot)
+                    local keepName = GetItemName(searchBag, searchSlot)
+                    if traitType then
+                        return keepName .. " (" .. Locale.GetTraitName(traitType) .. ")"
+                    end
+                    return keepName
                 end
             end
         end
