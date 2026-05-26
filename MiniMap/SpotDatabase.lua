@@ -131,6 +131,29 @@ function SpotDatabase:AddSpot(x, y, category, mapName)
         end
     end
 
+    for catKey, spots in pairs(self._data[currentMap]) do
+        if catKey ~= category and type(catKey) == "string" and type(spots) == "table" then
+            for _, s in ipairs(spots) do
+                if IsDuplicate(s, candidate) then
+                    return true, false
+                end
+            end
+        end
+    end
+
+    local builtinMap = self._builtinData and self._builtinData[currentMap]
+    if builtinMap then
+        for catKey, spots in pairs(builtinMap) do
+            if catKey ~= category and type(catKey) == "string" and type(spots) == "table" then
+                for _, s in ipairs(spots) do
+                    if IsDuplicate(s, candidate) then
+                        return true, false
+                    end
+                end
+            end
+        end
+    end
+
     table.insert(self._data[currentMap][category], { x = x, y = y, ts = GetTimeStamp() })
     self:InvalidateMergedCache(currentMap)
     return true, true

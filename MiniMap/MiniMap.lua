@@ -113,14 +113,26 @@ end
 
 local function AddSpotAtPlayer(category)
     local x, y = GetPlayerMapPosition()
-    if x and y then
-        local added, isNew = SpotDatabase:AddSpot(x, y, category, MiniMap.currentMapKey)
-        if added and isNew then
-            PrintSpotAdded(category)
-            return true
-        end
+    if not x or not y then
+        ZO_AlertNoSuppression(UI_ALERT_CATEGORY_ALERT, nil, MiniMap:Text('spotAddNoPosition'))
+        return false
     end
-    return false
+    local currentMap = MiniMap.currentMapKey
+    if not currentMap then
+        ZO_AlertNoSuppression(UI_ALERT_CATEGORY_ALERT, nil, MiniMap:Text('spotAddNoMap'))
+        return false
+    end
+    local added, isNew = SpotDatabase:AddSpot(x, y, category, currentMap)
+    if not added then
+        ZO_AlertNoSuppression(UI_ALERT_CATEGORY_ALERT, nil, MiniMap:Text('spotAddNoMap'))
+        return false
+    end
+    if not isNew then
+        ZO_AlertNoSuppression(UI_ALERT_CATEGORY_ALERT, nil, MiniMap:Text('spotAddDuplicate'))
+        return true
+    end
+    PrintSpotAdded(category)
+    return true
 end
 
 local function ForEachCategory(callback)
