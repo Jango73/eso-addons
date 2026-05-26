@@ -162,12 +162,12 @@ local function IsResearchDuplicateItemType(link)
 end
 
 local function IsResearchDuplicateQualityEnabled(saved, quality)
-    local rareQuality = ITEM_QUALITY_ARCANE or 3
+    local superiorQuality = ITEM_QUALITY_ARCANE or 3
     local epicQuality = ITEM_QUALITY_ARTIFACT or 4
     local legendaryQuality = ITEM_QUALITY_LEGENDARY or 5
 
-    if quality == rareQuality then
-        return saved.researchIncludeRare ~= false
+    if quality == superiorQuality then
+        return saved.researchIncludeSuperior ~= false
     elseif quality == epicQuality then
         return saved.researchIncludeEpic == true
     elseif quality == legendaryQuality then
@@ -186,8 +186,8 @@ local function IsResearchableTraitType(traitType)
         return false
     end
 
-    -- Ornate / Intricate are not research traits; they created false positives.
-    if traitType == 10 or traitType == 11 then
+    -- Ornate / Intricate are not research traits.
+    if traitType == ITEM_TRAIT_TYPE_ORNATE or traitType == ITEM_TRAIT_TYPE_INTRICATE then
         return false
     end
 
@@ -858,16 +858,17 @@ function MiniMap:RegisterSettingsMenu()
         },
         {
             type = 'checkbox',
-            name = self:Text('researchIncludeRareName'),
-            tooltip = self:Text('researchIncludeRareTooltip'),
+            name = self:Text('researchIncludeSuperiorName'),
+            tooltip = self:Text('researchIncludeSuperiorTooltip'),
             getFunc = function()
-                return self.saved.researchIncludeRare ~= false
+                return self.saved.researchIncludeSuperior ~= false
             end,
             setFunc = function(value)
-                self.saved.researchIncludeRare = value
-                self:InvalidateResearchDuplicateCache("settings.researchIncludeRare")
+                self.saved.researchIncludeSuperior = value
+                self:InvalidateResearchDuplicateCache("settings.researchIncludeSuperior")
+                self:RefreshResearchDuplicateOverlays()
             end,
-            default = DEFAULTS.researchIncludeRare,
+            default = DEFAULTS.researchIncludeSuperior,
             width = 'full',
         },
         {
@@ -880,6 +881,7 @@ function MiniMap:RegisterSettingsMenu()
             setFunc = function(value)
                 self.saved.researchIncludeEpic = value
                 self:InvalidateResearchDuplicateCache("settings.researchIncludeEpic")
+                self:RefreshResearchDuplicateOverlays()
             end,
             default = DEFAULTS.researchIncludeEpic,
             width = 'full',
@@ -894,6 +896,7 @@ function MiniMap:RegisterSettingsMenu()
             setFunc = function(value)
                 self.saved.researchIncludeLegendary = value
                 self:InvalidateResearchDuplicateCache("settings.researchIncludeLegendary")
+                self:RefreshResearchDuplicateOverlays()
             end,
             default = DEFAULTS.researchIncludeLegendary,
             width = 'full',
@@ -1325,6 +1328,17 @@ function MiniMap:InvalidateResearchDuplicateCache(reason)
     self._researchDuplicateCacheDirty = true
 end
 
+function MiniMap:RefreshResearchDuplicateOverlays()
+    if not self._researchDuplicateSlotControls then
+        return
+    end
+    for slotControl in pairs(self._researchDuplicateSlotControls) do
+        if slotControl._researchDuplicateOverlay then
+            self:UpdateResearchDuplicateSlotOverlay(slotControl, nil)
+        end
+    end
+end
+
 function MiniMap:IsResearchDuplicateSellSlot(bagId, slotIndex)
     if bagId ~= BAG_BACKPACK and bagId ~= BAG_BANK then
         return false
@@ -1385,6 +1399,11 @@ function MiniMap:UpdateResearchDuplicateSlotOverlay(slotControl, slotData)
     if not slotControl then
         return
     end
+
+    if not self._researchDuplicateSlotControls then
+        self._researchDuplicateSlotControls = {}
+    end
+    self._researchDuplicateSlotControls[slotControl] = true
 
     local researchIndicator = GetSlotResearchIndicator(slotControl)
     local overlay = slotControl._researchDuplicateOverlay

@@ -11,7 +11,7 @@ DEFAULTS = {
     autoSaveSpots = false,
     showToolbar = true,
     showNotes = false,
-    researchIncludeRare = true,
+    researchIncludeSuperior = true,
     researchIncludeEpic = false,
     researchIncludeLegendary = false,
 }
