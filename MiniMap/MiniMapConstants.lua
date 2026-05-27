@@ -53,6 +53,7 @@ MINIMAP_SPOT_TEXTURES = {
     thief_chest = nil,
     water = nil,
     wood = "/esoui/art/icons/mapkey/mapkey_woodworker.dds",
+    world_boss = nil,
 }
 
 MINIMAP_MARKER_TYPE_TEXTURE = "texture"

@@ -19,6 +19,7 @@ RESOURCE_CATEGORIES = {
     { key = 'thief_chest', color = { 0.3, 0.5, 0.8, 1 } },
     { key = 'water', color = { 0.25, 0.5, 1, 1 } },
     { key = 'wood', color = { 0.6, 0.4, 0.2, 1 } },
+    { key = 'world_boss', color = { 0.8, 0.1, 0.1, 1 } },
 }
 
 function SpotDatabase:Init(savedVars)
