@@ -1740,9 +1740,6 @@ function MiniMap:HandleSlashCommand(arguments)
         elseif IsValidCategory(value) then
             SpotDatabase:Clear(value)
             Print(string.format(self:Text("spotsCleared"), value))
-        elseif value == MINIMAP_SLASH_CANCEL then
-            pendingClearConfirm = nil
-            Print(self:Text("clearCancelled"))
         else
             Echo(self:Text("usageClear"))
         end
