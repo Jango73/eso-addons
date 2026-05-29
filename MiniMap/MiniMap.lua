@@ -458,7 +458,7 @@ function MiniMap:CreateControls()
         btn:SetMouseOverTexture("EsoUI/Art/Buttons/left_up.dds")
         btn:SetHandler("OnClicked", function()
             if IsShiftKeyDown() then
-                self:HandleSlashCommand("route " .. cat.key)
+                self:HandleSlashCommand(MINIMAP_SLASH_ROUTE .. " " .. cat.key)
             else
                 AddSpotAtPlayer(cat.key)
             end
@@ -1653,11 +1653,11 @@ function MiniMap:HandleSlashCommand(arguments)
     local command, value = zo_strmatch(arguments or "", "^(%S*)%s*(.*)$")
     command = zo_strlower(command or "")
     
-    if command ~= "clear" then
+    if command ~= MINIMAP_SLASH_CLEAR then
         pendingClearConfirm = nil
     end
 
-    if command == "corner" or command == "position" then
+    if command == MINIMAP_SLASH_CORNER or command == MINIMAP_SLASH_POSITION then
         local corner = NormalizeCorner(value)
         if not corner then
             Print(self:Text("invalidPosition"))
@@ -1667,7 +1667,7 @@ function MiniMap:HandleSlashCommand(arguments)
         self.saved.corner = corner
         self:ApplyLayout()
         Print(string.format(self:Text("positionChanged"), corner))
-    elseif command == "size" or command == "taille" then
+    elseif command == MINIMAP_SLASH_SIZE then
         local sizePercent = tonumber(value)
         if not sizePercent then
             Print(self:Text("invalidSize"))
@@ -1677,16 +1677,16 @@ function MiniMap:HandleSlashCommand(arguments)
         self.saved.sizePercent = MiniMapRenderUtils.Clamp(sizePercent, 10, 40)
         self:ApplyLayout()
         Print(string.format(self:Text("sizeChanged"), self.saved.sizePercent))
-    elseif command == "orientation" or command == "orient" then
-        if value ~= "north" and value ~= "player" and value ~= "nord" and value ~= "joueur" then
+    elseif command == MINIMAP_SLASH_ORIENTATION or command == MINIMAP_SLASH_ORIENT then
+        if value ~= MINIMAP_ORIENTATION_NORTH and value ~= MINIMAP_ORIENTATION_PLAYER then
             Print(self:Text("invalidOrientation"))
             return
         end
 
-        self.saved.orientation = (value == "player" or value == "joueur") and "player" or "north"
+        self.saved.orientation = (value == MINIMAP_ORIENTATION_PLAYER) and MINIMAP_ORIENTATION_PLAYER or MINIMAP_ORIENTATION_NORTH
         self:UpdatePlayer()
         Print(string.format(self:Text("orientationChanged"), self.saved.orientation))
-    elseif command == "opacity" or command == "opacite" or command == "alpha" then
+    elseif command == MINIMAP_SLASH_OPACITY or command == MINIMAP_SLASH_ALPHA then
         local opacity = tonumber(value)
         if not opacity then
             Print(self:Text("invalidOpacity"))
@@ -1696,7 +1696,7 @@ function MiniMap:HandleSlashCommand(arguments)
         self.saved.opacity = MiniMapRenderUtils.Clamp(opacity, 20, 100)
         self.root:SetAlpha(self.saved.opacity / 100)
         Print(string.format(self:Text("opacityChanged"), self.saved.opacity))
-    elseif command == "zoom" then
+    elseif command == MINIMAP_SLASH_ZOOM then
         local zoom = tonumber(value)
         if not zoom then
             Print(self:Text("invalidZoom"))
@@ -1706,71 +1706,71 @@ function MiniMap:HandleSlashCommand(arguments)
         self.saved.zoom = MiniMapRenderUtils.Clamp(zoom, 1, 16)
         self:ApplyLayout()
         Print(string.format(self:Text("zoomChanged"), self.saved.zoom))
-    elseif command == "hide" or command == "masquer" then
+    elseif command == MINIMAP_SLASH_HIDE then
         self.saved.hidden = true
         self.root:SetHidden(true)
         self:UpdateToolbarVisibility(false)
         Print(self:Text("hidden"))
-    elseif command == "show" or command == "afficher" then
+    elseif command == MINIMAP_SLASH_SHOW then
         self.saved.hidden = false
         self:UpdatePlayer()
         Print(self:Text("shown"))
-    elseif command == "add" then
+    elseif command == MINIMAP_SLASH_ADD then
         if IsValidCategory(value) then
             AddSpotAtPlayer(value)
         else
             Echo(string.format(self:Text("usageAdd"), GetCategoryList("|")))
         end
-    elseif command == "spots" then
+    elseif command == MINIMAP_SLASH_SPOTS then
         local total = SpotDatabase:GetSpotCount()
         Print(string.format(self:Text("totalSpots"), total))
         ForEachCategory(function(cat)
             Print(string.format(self:Text("spotsCount"), cat.key, SpotDatabase:GetSpotCount(cat.key)))
         end)
-    elseif command == "clear" then
-        if value == "all" then
-            if pendingClearConfirm == "all" then
+    elseif command == MINIMAP_SLASH_CLEAR then
+        if value == MINIMAP_SLASH_ALL then
+            if pendingClearConfirm == MINIMAP_SLASH_ALL then
                 SpotDatabase:Clear()
                 Print(self:Text("allSpotsCleared"))
                 pendingClearConfirm = nil
             else
-                pendingClearConfirm = "all"
+                pendingClearConfirm = MINIMAP_SLASH_ALL
                 Print(self:Text("confirmClearSpots"))
             end
         elseif IsValidCategory(value) then
             SpotDatabase:Clear(value)
             Print(string.format(self:Text("spotsCleared"), value))
-        elseif value == "cancel" then
+        elseif value == MINIMAP_SLASH_CANCEL then
             pendingClearConfirm = nil
             Print(self:Text("clearCancelled"))
         else
             Echo(self:Text("usageClear"))
         end
-    elseif command == "clean" then
+    elseif command == MINIMAP_SLASH_CLEAN then
         local removed = SpotDatabase:CleanDuplicates(true)
         Print(string.format(self:Text("removed"), removed))
-    elseif command == "pos" then
+    elseif command == MINIMAP_SLASH_POS then
         local x, y = GetMapPlayerPosition("player")
         if x and y then
             Print(string.format(self:Text("position"), x, y))
         else
             Print(self:Text("positionUnknown"))
         end
-    elseif command == "route" then
+    elseif command == MINIMAP_SLASH_ROUTE then
         local routeCommand = zo_strlower(zo_strmatch(value or "", "^(%S*)") or "")
-        if routeCommand == "clear" then
+        if routeCommand == MINIMAP_SLASH_CLEAR then
             RouteManager:ClearCategories()
             RouteManager:ClearRoute()
             Print(self:Text("routeCleared"))
             return
-        elseif routeCommand == "info" then
+        elseif routeCommand == MINIMAP_SLASH_INFO then
             if RouteManager:IsRouteActive() then
                 Print(RouteManager:GetRouteInfo())
             else
                 Print(self:Text("noRouteActive"))
             end
             return
-        elseif routeCommand == "all" then
+        elseif routeCommand == MINIMAP_SLASH_ALL then
             RouteManager:SetAllCategories()
             RouteManager:CalculateRoute(self.playerMapX, self.playerMapY, self.currentMapKey)
             Print(RouteManager:GetRouteInfo())
@@ -1797,17 +1797,17 @@ function MiniMap:HandleSlashCommand(arguments)
 
         RouteManager:CalculateRoute(self.playerMapX, self.playerMapY, self.currentMapKey)
         Print(RouteManager:GetRouteInfo())
-    elseif command == "routeclear" then
+    elseif command == MINIMAP_SLASH_ROUTECLEAR then
         RouteManager:ClearCategories()
         RouteManager:ClearRoute()
         Print(self:Text("routeCleared"))
-    elseif command == "routeinfo" then
+    elseif command == MINIMAP_SLASH_ROUTEINFO then
         if RouteManager:IsRouteActive() then
             Print(RouteManager:GetRouteInfo())
         else
             Print(self:Text("noRouteActive"))
         end
-    elseif command == "research" or command == "dupes" then
+    elseif command == MINIMAP_SLASH_RESEARCH or command == MINIMAP_SLASH_DUPES then
         self:ShowResearchDupes()
     else
         self:ShowHelp()
