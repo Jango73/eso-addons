@@ -19,6 +19,7 @@ Settings.lua
 RouteManager.lua
 SpotRenderer.lua
 RouteRenderer.lua
+QuestMarker.lua
 IndicatorRenderer.lua
 NoteRenderer.lua
 WorldMapOverlay.lua
