@@ -1881,7 +1881,12 @@ function MiniMap:HandleSlashCommand(arguments)
     end
 end
 
+function MINIMAP_CLOSEST_QUEST_KEYBIND()
+    MiniMap:ActivateClosestQuest()
+end
+
 function MiniMap:Initialize()
+    ZO_CreateStringId("SI_BINDING_NAME_MINIMAP_CLOSEST_QUEST", "Activate Closest Quest")
     self.saved = ZO_SavedVars:NewAccountWide("MiniMapSavedVariables", 1, nil, DEFAULTS)
 
     self.spots = ZO_SavedVars:NewAccountWide("MiniMapSpots", 1, nil, {})

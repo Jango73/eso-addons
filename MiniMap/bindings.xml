@@ -1,0 +1,9 @@
+<Bindings>
+  <Layer name="SI_KEYBINDINGS_LAYER_GENERAL">
+    <Category name="MiniMap">
+      <Action name="MINIMAP_CLOSEST_QUEST">
+        <Down>MINIMAP_CLOSEST_QUEST_KEYBIND()</Down>
+      </Action>
+    </Category>
+  </Layer>
+</Bindings>
