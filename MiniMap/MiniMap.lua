@@ -14,6 +14,10 @@
 local ADDON_NAME = "MiniMap"
 local DEBUG_ENABLED = false
 
+local function ZoomFromUI(t)
+    return MINIMAP_ZOOM_MIN * (MINIMAP_ZOOM_MAX / MINIMAP_ZOOM_MIN) ^ t
+end
+
 local MiniMap = {
     tiles = {},
     tileCount = 0,
@@ -551,6 +555,57 @@ function MiniMap:CreateControls()
         end
     )
 
+    local zoomSize = 28
+    local zoomSpacing = 2
+
+    self.zoomBar = WINDOW_MANAGER:CreateTopLevelWindow("MiniMapZoomBar")
+    self.zoomBar:SetDrawTier(DT_HIGH)
+    self.zoomBar:SetClampedToScreen(true)
+    self.zoomBar:SetMouseEnabled(true)
+    self.zoomBar:SetHidden(true)
+    self.zoomBar:SetDimensions(zoomSize * 2 + zoomSpacing, zoomSize)
+
+    local function MakeZoomButton(name, text, anchorTo, delta)
+        local btn = WINDOW_MANAGER:CreateControl(name, self.zoomBar, CT_BUTTON)
+        btn:SetDimensions(zoomSize, zoomSize)
+
+        local bg = WINDOW_MANAGER:CreateControl(name .. "Bg", btn, CT_BACKDROP)
+        bg:SetAnchorFill(btn)
+        bg:SetCenterColor(0, 0, 0, 0.7)
+        bg:SetEdgeColor(0.57, 0.56, 0.45, 1)
+        bg:SetEdgeTexture("", 1, 1, 2)
+
+        local label = WINDOW_MANAGER:CreateControl(name .. "Label", btn, CT_LABEL)
+        label:SetAnchor(CENTER, btn, CENTER, 0, 0)
+        label:SetFont("ZoFontGameBold")
+        label:SetColor(1, 1, 1, 1)
+        label:SetText(text)
+
+        btn:SetAnchor(LEFT, anchorTo, anchorTo == self.zoomBar and LEFT or RIGHT, delta, 0)
+        btn:SetHandler("OnClicked", function()
+            local step = (text == "+") and 1 or -1
+            local newZoom = MiniMapRenderUtils.Clamp((MiniMap.saved.zoom or DEFAULTS.zoom) + step, 1, 16)
+            if newZoom ~= MiniMap.saved.zoom then
+                MiniMap.saved.zoom = newZoom
+                MiniMap:RefreshMap(true)
+            end
+        end)
+
+        btn:SetHandler("OnMouseEnter", function()
+            bg:SetCenterColor(0.2, 0.2, 0.2, 0.9)
+            InitializeTooltip(InformationTooltip, btn, TOPLEFT, TOPLEFT, 0, 0)
+            SetTooltipText(InformationTooltip, (text == "+") and self:Text('zoomIn') or self:Text('zoomOut'))
+        end)
+        btn:SetHandler("OnMouseExit", function()
+            bg:SetCenterColor(0, 0, 0, 0.7)
+            ClearTooltip(InformationTooltip)
+        end)
+        return btn
+    end
+
+    self.zoomOut = MakeZoomButton("MiniMapZoomOut", "-", self.zoomBar, 0)
+    self.zoomIn = MakeZoomButton("MiniMapZoomIn", "+", self.zoomOut, zoomSpacing)
+
     self.worldMapOverlay = WorldMapOverlay
     self.worldMapOverlay:Init()
 end
@@ -561,7 +616,8 @@ function MiniMap:ApplyLayout()
     local corner = CORNERS[self.saved.corner] or CORNERS.topright
 
     self.size = MiniMapRenderUtils.Clamp(size, 96, 480)
-    local effectiveZoom = self.isCityMap and MINIMAP_CITY_ZOOM or self.saved.zoom
+    local zoomT = MiniMapRenderUtils.Clamp((self.saved.zoom - MINIMAP_ZOOM_MIN) / (MINIMAP_ZOOM_MAX - MINIMAP_ZOOM_MIN), 0, 1)
+    local effectiveZoom = self.isCityMap and MINIMAP_CITY_ZOOM or ZoomFromUI(zoomT)
     self.mapSize = self.size * effectiveZoom
 
     self.root:ClearAnchors()
@@ -583,6 +639,7 @@ function MiniMap:ApplyLayout()
     end
 
     self:ApplyToolbarLayout()
+    self:ApplyZoomBarLayout()
 
     self:LayoutTiles()
     self:UpdatePlayer()
@@ -616,6 +673,16 @@ function MiniMap:ApplyToolbarLayout()
     self.toolbar:SetAnchor(BOTTOM, GuiRoot, BOTTOM, 0, -84)
 end
 
+function MiniMap:ApplyZoomBarLayout()
+    if not self.zoomBar then
+        return
+    end
+
+    self.zoomBar:ClearAnchors()
+    self.zoomBar:SetAnchor(BOTTOM, self.root, TOP, 0, -2)
+    self.zoomBar:SetAlpha(MiniMapRenderUtils.Clamp(self.saved.opacity or DEFAULTS.opacity, 20, 100) / 100)
+end
+
 function MiniMap:IsHudShowing()
     if not SCENE_MANAGER or not SCENE_MANAGER.GetScene then
         return true
@@ -641,14 +708,13 @@ function MiniMap:UpdateToolbarVisibility(isHudShowing)
     if not wantsVisible then
         self.toolbarVisibleSinceMs = nil
         self.toolbar:SetHidden(true)
-        return
+    else
+        self.toolbarVisibleSinceMs = self.toolbarVisibleSinceMs or now
+        self.toolbar:SetHidden(now - self.toolbarVisibleSinceMs < 150)
     end
 
-    self.toolbarVisibleSinceMs = self.toolbarVisibleSinceMs or now
-    if now - self.toolbarVisibleSinceMs >= 150 then
-        self.toolbar:SetHidden(false)
-    else
-        self.toolbar:SetHidden(true)
+    if self.zoomBar then
+        self.zoomBar:SetHidden(not isHudShowing or self.saved.hidden)
     end
 end
 
@@ -765,14 +831,14 @@ function MiniMap:RegisterSettingsMenu()
             type = 'slider',
             name = self:Text('zoomName'),
             tooltip = self:Text('zoomTooltip'),
-            min = 2,
-            max = 16,
+            min = MINIMAP_ZOOM_MIN,
+            max = MINIMAP_ZOOM_MAX,
             step = 1,
             getFunc = function()
                 return self.saved.zoom or DEFAULTS.zoom
             end,
             setFunc = function(value)
-                self.saved.zoom = MiniMapRenderUtils.Clamp(value, 1, 16)
+                self.saved.zoom = MiniMapRenderUtils.Clamp(value, MINIMAP_ZOOM_MIN, MINIMAP_ZOOM_MAX)
                 self:RefreshMap(true)
             end,
             default = DEFAULTS.zoom,
