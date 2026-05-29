@@ -24,6 +24,10 @@ local MiniMap = {
     nextQuestBreadcrumbRefreshMs = 0,
     nextWayshrineRouteUpdateMs = 0,
     isCityMap = false,
+    nearestQuestShortcutX = nil,
+    nearestQuestShortcutY = nil,
+    nearestQuestDestX = nil,
+    nearestQuestDestY = nil,
 }
 
 local function Print(message)
@@ -529,18 +533,11 @@ function MiniMap:CreateControls()
 
     self.indicatorRenderer = IndicatorRenderer
     self.indicatorRenderer:Init(self)
-    self.questMarker = self.indicatorRenderer:AddQuestMarker(
-        MINIMAP_EDGE_INDICATOR_QUEST,
-        MARKER_DEFINITIONS[MINIMAP_EDGE_INDICATOR_QUEST],
-        function()
-            return self:GetActiveQuestTargetPosition()
-        end
-    )
     self.indicatorRenderer:AddQuestMarker(
         MINIMAP_EDGE_INDICATOR_WAYSHRINE,
         MARKER_DEFINITIONS[MINIMAP_EDGE_INDICATOR_WAYSHRINE],
         function()
-            if self.questMarker and self.questMarker:HasShortcut() then
+            if self.nearestQuestShortcutX then
                 return nil, nil
             end
             return self:GetNearestWayshrinePosition()
@@ -934,17 +931,16 @@ function MiniMap:GetFocusedQuestIndex()
     return nil
 end
 
-function MiniMap:GetActiveQuestTargetPosition()
+function MiniMap:GetAllQuestTargetPositions()
     local questIndex = self:GetFocusedQuestIndex()
     if not questIndex or not WORLD_MAP_QUEST_BREADCRUMBS or not self.playerMapX or not self.playerMapY then
-        return nil, nil
+        return {}
     end
 
-    local bestX, bestY
-    local bestDistanceSq
-    local isBestBreadcrumb = false
+    local positions = {}
     local mainStepIndex = QUEST_MAIN_STEP_INDEX or 1
     local numSteps = GetJournalQuestNumSteps and GetJournalQuestNumSteps(questIndex) or mainStepIndex
+    local px, py = self.playerMapX, self.playerMapY
 
     for stepIndex = mainStepIndex, numSteps do
         local numPositions = WORLD_MAP_QUEST_BREADCRUMBS:GetNumQuestConditionPositions(questIndex, stepIndex)
@@ -952,39 +948,35 @@ function MiniMap:GetActiveQuestTargetPosition()
             for conditionIndex = 1, numPositions do
                 local positionData = WORLD_MAP_QUEST_BREADCRUMBS:GetQuestConditionPosition(questIndex, stepIndex, conditionIndex)
                 if positionData and positionData.insideCurrentMapWorld and positionData.xLoc and positionData.yLoc then
-                    local dx = positionData.xLoc - self.playerMapX
-                    local dy = positionData.yLoc - self.playerMapY
-                    local distanceSq = (dx * dx) + (dy * dy)
-                    local isBreadcrumb = positionData.isBreadcrumb
-
-                    if not bestDistanceSq or distanceSq < bestDistanceSq then
-                        bestDistanceSq = distanceSq
-                        bestX = positionData.xLoc
-                        bestY = positionData.yLoc
-                        isBestBreadcrumb = isBreadcrumb
-                    elseif isBreadcrumb and not isBestBreadcrumb then
-                    elseif not isBreadcrumb and isBestBreadcrumb then
-                        bestDistanceSq = distanceSq
-                        bestX = positionData.xLoc
-                        bestY = positionData.yLoc
-                        isBestBreadcrumb = false
-                    end
+                    local dx = positionData.xLoc - px
+                    local dy = positionData.yLoc - py
+                    table.insert(positions, {
+                        x = positionData.xLoc,
+                        y = positionData.yLoc,
+                        isBreadcrumb = positionData.isBreadcrumb,
+                        distanceSq = (dx * dx) + (dy * dy),
+                    })
                 end
             end
         end
     end
 
-    if bestX and bestY then
-        return bestX, bestY, isBestBreadcrumb
+    table.sort(positions, function(a, b)
+        if a.isBreadcrumb ~= b.isBreadcrumb then
+            return b.isBreadcrumb and true or false
+        end
+        return a.distanceSq < b.distanceSq
+    end)
+
+    if #positions == 0 then
+        local now = GetFrameTimeMilliseconds and GetFrameTimeMilliseconds() or 0
+        if WORLD_MAP_QUEST_BREADCRUMBS.RefreshQuest and now >= self.nextQuestBreadcrumbRefreshMs then
+            self.nextQuestBreadcrumbRefreshMs = now + 3000
+            WORLD_MAP_QUEST_BREADCRUMBS:RefreshQuest(questIndex)
+        end
     end
 
-    local now = GetFrameTimeMilliseconds and GetFrameTimeMilliseconds() or 0
-    if WORLD_MAP_QUEST_BREADCRUMBS.RefreshQuest and now >= self.nextQuestBreadcrumbRefreshMs then
-        self.nextQuestBreadcrumbRefreshMs = now + 3000
-        WORLD_MAP_QUEST_BREADCRUMBS:RefreshQuest(questIndex)
-    end
-
-    return nil, nil
+    return positions
 end
 
 local POI_TYPE_WAYSHRINE = 1
@@ -1069,14 +1061,19 @@ function MiniMap:UpdateQuestIndicatorWayshrine()
     self.nextWayshrineRouteUpdateMs = now + 1000
 
     local px, py = self.playerMapX, self.playerMapY
-    local qx, qy = self:GetActiveQuestTargetPosition()
+    local objectives = self:GetAllQuestTargetPositions()
 
-    if not px or not py or not qx or not qy then
-        if self.questMarker then
-            self.questMarker:ClearShortcut()
-        end
+    self.nearestQuestShortcutX = nil
+    self.nearestQuestShortcutY = nil
+    self.nearestQuestDestX = nil
+    self.nearestQuestDestY = nil
+
+    if #objectives == 0 or not px or not py then
         return
     end
+
+    local nearest = objectives[1]
+    local qx, qy = nearest.x, nearest.y
 
     local dxD = qx - px
     local dyD = qy - py
@@ -1084,33 +1081,20 @@ function MiniMap:UpdateQuestIndicatorWayshrine()
 
     local wayshrinePlayerX, wayshrinePlayerY, distA = self:GetNearestWayshrineToPosition(px, py)
     if not wayshrinePlayerX then
-        if self.questMarker then
-            self.questMarker:ClearShortcut()
-        end
         return
     end
 
     local wayshrineQuestX, wayshrineQuestY, distB = self:GetNearestKnownWayshrineToPosition(qx, qy)
     if not wayshrineQuestX then
-        if self.questMarker then
-            self.questMarker:ClearShortcut()
-        end
         return
     end
 
     local sameWayshrine = (wayshrinePlayerX == wayshrineQuestX and wayshrinePlayerY == wayshrineQuestY)
-    if sameWayshrine then
-        if self.questMarker then
-            self.questMarker:ClearShortcut()
-        end
-    elseif distA + distB < distD then
-        if self.questMarker then
-            self.questMarker:SetShortcut(wayshrinePlayerX, wayshrinePlayerY)
-        end
-    else
-        if self.questMarker then
-            self.questMarker:ClearShortcut()
-        end
+    if not sameWayshrine and distA + distB < distD then
+        self.nearestQuestShortcutX = wayshrinePlayerX
+        self.nearestQuestShortcutY = wayshrinePlayerY
+        self.nearestQuestDestX = wayshrineQuestX
+        self.nearestQuestDestY = wayshrineQuestY
     end
 end
 
@@ -1140,7 +1124,8 @@ function MiniMap:UpdateMapOverlays(playerX, playerY, mapRotation)
     self.spotRenderer:Update(playerX, playerY, mapRotation, center, radius, margin, self.currentMapKey)
     self.routeRenderer:Update(playerX, playerY, mapRotation, center, radius, self.currentMapKey)
 
-    self.indicatorRenderer:Update(playerX, playerY, mapRotation, center, radius, margin)
+    local objectives = self:GetAllQuestTargetPositions()
+    self.indicatorRenderer:Update(playerX, playerY, mapRotation, center, radius, margin, self.mapSize, objectives, self.nearestQuestShortcutX, self.nearestQuestShortcutY)
 end
 
 function MiniMap:LayoutTiles()
@@ -1816,18 +1801,8 @@ function MiniMap:Initialize()
             if MiniMap.noteRenderer and MiniMap.noteRenderer.notesPanel then MiniMap.noteRenderer.notesPanel:SetHidden(true) end
             lastMapOpen = true
 
-            if MiniMap.worldMapOverlay and MiniMap.questMarker and MiniMap.questMarker:HasShortcut() then
-                local qx, qy, isBreadcrumb = MiniMap:GetActiveQuestTargetPosition()
-                if qx and qy and not isBreadcrumb then
-                    local wayshrineX, wayshrineY = MiniMap:GetNearestKnownWayshrineToPosition(qx, qy)
-                    if wayshrineX then
-                        MiniMap.worldMapOverlay:Update(wayshrineX, wayshrineY)
-                    else
-                        MiniMap.worldMapOverlay:Hide()
-                    end
-                else
-                    MiniMap.worldMapOverlay:Hide()
-                end
+            if MiniMap.worldMapOverlay and MiniMap.nearestQuestShortcutX then
+                MiniMap.worldMapOverlay:Update(MiniMap.nearestQuestDestX, MiniMap.nearestQuestDestY)
             else
                 MiniMap.worldMapOverlay:Hide()
             end

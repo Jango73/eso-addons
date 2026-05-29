@@ -150,6 +150,23 @@ function QuestMarker:Update(playerX, playerY, mapRotation, center, radius, margi
     end
 end
 
+function QuestMarker:UpdateWithCoords(targetX, targetY, playerX, playerY, mapRotation, center, radius, margin, mapSize)
+    if targetX and targetY then
+        if not self.edgeControl then
+            self:CreateControls()
+        end
+
+        local localX, localY, distFromCenter = MiniMapRenderUtils.WorldToLocal(
+            targetX, targetY,
+            playerX, playerY,
+            mapSize, mapRotation, center
+        )
+        self:UpdatePosition(localX, localY, distFromCenter, center, radius, margin)
+    else
+        self:Hide()
+    end
+end
+
 function QuestMarker:ApplyLayout(size)
     self.markerSize = MiniMapRenderUtils.Clamp(math.floor(size * MINIMAP_SIZE_FACTOR_EDGE_INDICATOR), 18, 32)
     self.insideMarkerSize = MiniMapRenderUtils.Clamp(math.floor(size * MINIMAP_SIZE_FACTOR_INSIDE_MARKER), 6, 12)

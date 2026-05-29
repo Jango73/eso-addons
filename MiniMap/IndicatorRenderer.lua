@@ -10,6 +10,7 @@ local COMPASS_MARKERS = {
 function IndicatorRenderer:Init(owner)
     self.owner = owner
     self.questMarkers = {}
+    self.objectiveMarkers = {}
     self.compassMarkers = {}
     self.compassSize = 0
 
@@ -30,10 +31,44 @@ function IndicatorRenderer:AddQuestMarker(id, definition, provider)
     return marker
 end
 
+function IndicatorRenderer:ReconcileQuestObjectives(objectives, playerX, playerY, mapRotation, center, radius, margin, mapSize, shortcutX, shortcutY)
+    if not objectives then
+        for _, marker in ipairs(self.objectiveMarkers) do
+            marker:Hide()
+        end
+        return
+    end
+
+    local count = #objectives
+
+    while #self.objectiveMarkers < count do
+        local idx = #self.objectiveMarkers + 1
+        local marker = QuestMarker:New("objective" .. idx, MARKER_DEFINITIONS[MINIMAP_EDGE_INDICATOR_QUEST], nil, self.owner.root)
+        table.insert(self.objectiveMarkers, marker)
+    end
+
+    for i = count + 1, #self.objectiveMarkers do
+        self.objectiveMarkers[i]:Hide()
+    end
+
+    for i, obj in ipairs(objectives) do
+        local marker = self.objectiveMarkers[i]
+        local tx, ty = obj.x, obj.y
+        if shortcutX and shortcutY then
+            tx, ty = shortcutX, shortcutY
+        end
+        marker:UpdateWithCoords(tx, ty, playerX, playerY, mapRotation, center, radius, margin, mapSize)
+    end
+end
+
 function IndicatorRenderer:ApplyLayout(size)
     self.compassSize = MiniMapRenderUtils.Clamp(math.floor(size * 0.12), 12, 20)
 
     for _, marker in ipairs(self.questMarkers) do
+        marker:ApplyLayout(size)
+    end
+
+    for _, marker in ipairs(self.objectiveMarkers) do
         marker:ApplyLayout(size)
     end
 
@@ -84,10 +119,12 @@ function IndicatorRenderer:PositionCompassMarker(marker, center, radius, directi
     marker.edgeControl:SetHidden(false)
 end
 
-function IndicatorRenderer:Update(playerX, playerY, mapRotation, center, radius, margin)
+function IndicatorRenderer:Update(playerX, playerY, mapRotation, center, radius, margin, mapSize, objectives, shortcutX, shortcutY)
     for _, marker in ipairs(self.questMarkers) do
-        marker:Update(playerX, playerY, mapRotation, center, radius, margin, self.owner.mapSize)
+        marker:Update(playerX, playerY, mapRotation, center, radius, margin, mapSize or self.owner.mapSize)
     end
+
+    self:ReconcileQuestObjectives(objectives, playerX, playerY, mapRotation, center, radius, margin, mapSize or self.owner.mapSize, shortcutX, shortcutY)
 
     for id, marker in pairs(self.compassMarkers) do
         if not marker.edgeControl then
