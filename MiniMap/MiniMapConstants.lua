@@ -145,6 +145,7 @@ MINIMAP_SLASH_RESEARCH = "research"
 MINIMAP_SLASH_DUPES = "dupes"
 MINIMAP_SLASH_INFO = "info"
 MINIMAP_SLASH_ALL = "all"
+MINIMAP_SLASH_CLOSEST_QUEST = "closest-quest"
 
 -- Orientation values
 MINIMAP_ORIENTATION_NORTH = "north"

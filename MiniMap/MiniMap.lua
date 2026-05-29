@@ -1045,6 +1045,73 @@ function MiniMap:GetAllQuestTargetPositions()
     return positions
 end
 
+function MiniMap:ActivateClosestQuest()
+    local px, py = self.playerMapX, self.playerMapY
+    if not px or not py then
+        Print(self:Text("positionUnknown"))
+        return
+    end
+
+    local closestDistSq = math.huge
+    local closestQuestIndex = nil
+    local closestQuestName = nil
+
+    local maxQuests = MAX_JOURNAL_QUESTS or 25
+    for questIndex = 1, maxQuests do
+        if not IsValidQuestIndex(questIndex) then
+            break
+        end
+        local questName = GetJournalQuestName(questIndex)
+        local mainStepIndex = QUEST_MAIN_STEP_INDEX or 1
+        local numSteps = GetJournalQuestNumSteps and GetJournalQuestNumSteps(questIndex) or mainStepIndex
+
+        for stepIndex = mainStepIndex, numSteps do
+            local numPositions = WORLD_MAP_QUEST_BREADCRUMBS:GetNumQuestConditionPositions(questIndex, stepIndex)
+            if numPositions then
+                for conditionIndex = 1, numPositions do
+                    local positionData = WORLD_MAP_QUEST_BREADCRUMBS:GetQuestConditionPosition(questIndex, stepIndex, conditionIndex)
+                    if positionData and positionData.insideCurrentMapWorld and positionData.xLoc and positionData.yLoc then
+                        local dx = positionData.xLoc - px
+                        local dy = positionData.yLoc - py
+                        local distSq = dx * dx + dy * dy
+                        if distSq < closestDistSq then
+                            closestDistSq = distSq
+                            closestQuestIndex = questIndex
+                            closestQuestName = questName
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    if closestQuestIndex then
+        if FOCUSED_QUEST_TRACKER and FOCUSED_QUEST_TRACKER.ForceAssist then
+            FOCUSED_QUEST_TRACKER:ForceAssist(closestQuestIndex)
+        elseif QUEST_TRACKER and QUEST_TRACKER.ForceAssist then
+            QUEST_TRACKER:ForceAssist(closestQuestIndex)
+        elseif SetMapQuestPinsTrackingLevel then
+            SetMapQuestPinsTrackingLevel(closestQuestIndex, 2)
+        end
+        Print(string.format(self:Text("closestQuestActivated"), closestQuestName))
+        return
+    end
+
+    local anyQuest = false
+    for questIndex = 1, (MAX_JOURNAL_QUESTS or 25) do
+        if IsValidQuestIndex(questIndex) then
+            anyQuest = true
+            break
+        end
+    end
+
+    if not anyQuest then
+        Print(self:Text("noQuestsFound"))
+    else
+        Print(self:Text("noQuestObjectivesFound"))
+    end
+end
+
 local POI_TYPE_WAYSHRINE = 1
 
 function MiniMap:GetNearestWayshrinePosition()
@@ -1378,6 +1445,7 @@ function MiniMap:ShowHelp()
         "helpRoute",
         "helpRouteClear",
         "helpRouteInfo",
+        "helpClosestQuest",
         "helpResearch",
         "helpResearchSort",
     }
@@ -1806,6 +1874,8 @@ function MiniMap:HandleSlashCommand(arguments)
         end
     elseif command == MINIMAP_SLASH_RESEARCH or command == MINIMAP_SLASH_DUPES then
         self:ShowResearchDupes()
+    elseif command == MINIMAP_SLASH_CLOSEST_QUEST then
+        self:ActivateClosestQuest()
     else
         self:ShowHelp()
     end
