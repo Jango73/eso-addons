@@ -109,7 +109,7 @@ local function GetCategoryList(separator)
     for _, c in ipairs(RESOURCE_CATEGORIES) do
         table.insert(categories, c.key)
     end
-    return table.concat(categories, separator or "|")
+    return table.concat(categories, separator or ", ")
 end
 
 local function GetPlayerMapPosition()
@@ -1719,7 +1719,7 @@ function MiniMap:HandleSlashCommand(arguments)
         if IsValidCategory(value) then
             AddSpotAtPlayer(value)
         else
-            Echo(string.format(self:Text("usageAdd"), GetCategoryList("|")))
+            Echo(string.format(self:Text("usageAdd"), GetCategoryList(", ")))
         end
     elseif command == MINIMAP_SLASH_SPOTS then
         local total = SpotDatabase:GetSpotCount()
