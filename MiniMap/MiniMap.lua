@@ -288,6 +288,7 @@ local function BuildResearchDuplicateResults(saved, includeBank)
     local keepSlots = {}
     local sellToKeepIds = {}
     local sellToKeepTraitTypes = {}
+    local sellToKeepQualities = {}
 
     for _, data in pairs(groups) do
         if data.count > 1 then
@@ -302,6 +303,7 @@ local function BuildResearchDuplicateResults(saved, includeBank)
                     sellSlots[slotData.uniqueId] = true
                     sellToKeepIds[slotData.uniqueId] = data.keepSlot.uniqueId
                     sellToKeepTraitTypes[slotData.uniqueId] = data.traitType
+                    sellToKeepQualities[slotData.uniqueId] = data.quality
                 end
             end
         end
@@ -312,7 +314,7 @@ local function BuildResearchDuplicateResults(saved, includeBank)
     for _ in pairs(sellSlots) do
         sellCount = sellCount + 1
     end
-    return dupes, sellSlots, keepSlots, sellToKeepIds, sellToKeepTraitTypes
+    return dupes, sellSlots, keepSlots, sellToKeepIds, sellToKeepTraitTypes, sellToKeepQualities
 end
 
 local function GetSlotBagAndIndex(slotControl, slotData)
@@ -1482,11 +1484,12 @@ function MiniMap:IsResearchDuplicateSellSlot(bagId, slotIndex)
 
     if self._researchDuplicateCacheDirty or not self._researchDuplicateSellSlots then
         -- Keep algorithm consistent with /minimap dupes: always evaluate backpack + bank.
-        local _, sellSlots, keepSlots, sellToKeepIds, sellToKeepTraitTypes = BuildResearchDuplicateResults(self.saved, true)
+        local _, sellSlots, keepSlots, sellToKeepIds, sellToKeepTraitTypes, sellToKeepQualities = BuildResearchDuplicateResults(self.saved, true)
         self._researchDuplicateSellSlots = sellSlots
         self._researchDuplicateKeepSlots = keepSlots
         self._researchDuplicateSellToKeepIds = sellToKeepIds
         self._researchDuplicateSellToKeepTraitTypes = sellToKeepTraitTypes
+        self._researchDuplicateSellToKeepQualities = sellToKeepQualities
         self._researchDuplicateCacheDirty = false
     end
 
@@ -1560,7 +1563,6 @@ function MiniMap:UpdateResearchDuplicateSlotOverlay(slotControl, slotData)
         if not keepLabel then
             keepLabel = WINDOW_MANAGER:CreateControl(nil, slotControl, CT_LABEL)
             keepLabel:SetFont("ZoFontGameSmall")
-            keepLabel:SetColor(0.2, 0.9, 0.2, 1)
             keepLabel:SetDrawLayer(DL_OVERLAY)
             keepLabel:SetDrawLevel(50)
             keepLabel:SetWidth(200)
@@ -1587,6 +1589,7 @@ function MiniMap:UpdateResearchDuplicateSlotOverlay(slotControl, slotData)
                     keepLabel:SetAnchor(TOPLEFT, slotControl, TOPLEFT, 60, -8)
                 end
                 keepLabel:SetText(keepName)
+                self:ApplyResearchDuplicateKeepLabelColor(keepLabel, bagId, slotIndex)
                 keepLabel:SetHidden(false)
             else
                 keepLabel:SetHidden(true)
@@ -1611,7 +1614,6 @@ function MiniMap:UpdateResearchDuplicateSlotOverlay(slotControl, slotData)
     if not keepLabel then
         keepLabel = WINDOW_MANAGER:CreateControl(nil, slotControl, CT_LABEL)
         keepLabel:SetFont("ZoFontGameSmall")
-        keepLabel:SetColor(0.2, 0.9, 0.2, 1)
         keepLabel:SetDrawLayer(DL_OVERLAY)
         keepLabel:SetDrawLevel(50)
         keepLabel:SetWidth(200)
@@ -1638,6 +1640,7 @@ function MiniMap:UpdateResearchDuplicateSlotOverlay(slotControl, slotData)
                 keepLabel:SetAnchor(TOPLEFT, slotControl, TOPLEFT, 60, -8)
             end
             keepLabel:SetText(keepName)
+            self:ApplyResearchDuplicateKeepLabelColor(keepLabel, bagId, slotIndex)
             keepLabel:SetHidden(false)
         else
             keepLabel:SetHidden(true)
@@ -1645,6 +1648,19 @@ function MiniMap:UpdateResearchDuplicateSlotOverlay(slotControl, slotData)
     else
         keepLabel:SetHidden(true)
     end
+end
+
+function MiniMap:ApplyResearchDuplicateKeepLabelColor(keepLabel, bagId, slotIndex)
+    local uniqueId = GetItemUniqueId(bagId, slotIndex)
+    if uniqueId and self._researchDuplicateSellToKeepQualities then
+        local quality = self._researchDuplicateSellToKeepQualities[uniqueId]
+        if quality then
+            local color = GetItemQualityColor(quality)
+            keepLabel:SetColor(color.r, color.g, color.b, color.a)
+            return
+        end
+    end
+    keepLabel:SetColor(0.2, 0.9, 0.2, 1)
 end
 
 function MiniMap:InstallResearchDuplicateOverlays()
