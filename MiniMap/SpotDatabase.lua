@@ -392,15 +392,13 @@ function SpotDatabase:GetAllMaps()
 end
 
 function SpotDatabase:GetResourceCategory(lootType)
-    if lootType == 15 then return 'rune'
-    elseif lootType == 19 then return 'water'
-    elseif lootType == 22 then return 'furniture'
-    elseif lootType == 23 then return 'plant'
-    elseif lootType == 26 then return 'ore'
-    elseif lootType == 37 then return 'wood'
-    elseif lootType == 40 then return 'silk'
-    -- elseif lootType == 0 then return 'jewelry'
-    -- elseif lootType == 0 then return 'treasure'
+    if lootType == MINIMAP_LOOT_TYPE_RUNE then return 'rune'
+    elseif lootType == MINIMAP_LOOT_TYPE_WATER then return 'water'
+    elseif lootType == MINIMAP_LOOT_TYPE_FURNITURE then return 'furniture'
+    elseif lootType == MINIMAP_LOOT_TYPE_PLANT then return 'plant'
+    elseif lootType == MINIMAP_LOOT_TYPE_ORE then return 'ore'
+    elseif lootType == MINIMAP_LOOT_TYPE_WOOD then return 'wood'
+    elseif lootType == MINIMAP_LOOT_TYPE_SILK then return 'silk'
     end
     return nil
 end

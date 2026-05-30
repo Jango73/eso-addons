@@ -34,8 +34,8 @@ function QuestMarker:CreateControl(controlName, controlType, texture, color)
     elseif controlType == CT_BACKDROP then
         if color then
             control:SetCenterColor(color[1], color[2], color[3], 1)
-            control:SetEdgeColor(color[1] * 0.5, color[2] * 0.5, color[3] * 0.5, 1)
-            control:SetEdgeTexture(nil, 1, 1, 2)
+            control:SetEdgeColor(color[1] * MINIMAP_EDGE_DARKEN_FACTOR, color[2] * MINIMAP_EDGE_DARKEN_FACTOR, color[3] * MINIMAP_EDGE_DARKEN_FACTOR, 1)
+            control:SetEdgeTexture(nil, MINIMAP_EDGE_INSET, MINIMAP_EDGE_INSET, MINIMAP_EDGE_BLEND_MODE)
         end
     end
 
@@ -59,7 +59,7 @@ end
 
 function QuestMarker:PositionAtEdge(control, center, radius, dx, dy, markerSize)
     local length = math.sqrt((dx * dx) + (dy * dy))
-    if length <= 0.0001 then
+    if length <= MINIMAP_EPSILON then
         control:SetHidden(true)
         return
     end
@@ -170,7 +170,7 @@ end
 function QuestMarker:ApplyLayout(size)
     self.markerSize = MiniMapRenderUtils.Clamp(math.floor(size * MINIMAP_SIZE_FACTOR_EDGE_INDICATOR), 18, 32)
     self.insideMarkerSize = MiniMapRenderUtils.Clamp(math.floor(size * MINIMAP_SIZE_FACTOR_INSIDE_MARKER), 6, 12)
-    self.textureMarkerSize = MiniMapRenderUtils.Clamp(math.floor(size * MINIMAP_SIZE_FACTOR_SPOT_TEXTURE_MARKER), 18, 40)
+    self.textureMarkerSize = MiniMapRenderUtils.Clamp(math.floor(size * MINIMAP_SIZE_FACTOR_SPOT_TEXTURE_MARKER), MINIMAP_SPOT_TEXTURE_MIN, MINIMAP_SPOT_TEXTURE_MAX)
 
     if self.edgeControl then
         self.edgeControl:SetDimensions(self.markerSize, self.markerSize)

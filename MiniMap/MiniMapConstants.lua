@@ -160,6 +160,37 @@ COMPANION_DAMAGE_TRAITS = {
     [ITEM_TRAIT_TYPE_ARMOR_PROLIFIC] = true,
 }
 
+-- Resource node loot type identifiers (from EVENT_LOOT_RECEIVED soundCategory)
+MINIMAP_LOOT_TYPE_RUNE = 15
+MINIMAP_LOOT_TYPE_WATER = 19
+MINIMAP_LOOT_TYPE_FURNITURE = 22
+MINIMAP_LOOT_TYPE_PLANT = 23
+MINIMAP_LOOT_TYPE_ORE = 26
+MINIMAP_LOOT_TYPE_WOOD = 37
+MINIMAP_LOOT_TYPE_SILK = 40
+
+-- Edge texture insets and blend mode for backdrop controls
+MINIMAP_EDGE_INSET = 1
+MINIMAP_EDGE_BLEND_MODE = 2
+
+-- Edge darken factor for backdrop edge colors
+MINIMAP_EDGE_DARKEN_FACTOR = 0.5
+
+-- Epsilon for near-zero length comparisons
+MINIMAP_EPSILON = 0.0001
+
+-- Clamp ranges for spot texture marker sizes
+MINIMAP_SPOT_TEXTURE_MIN = 18
+MINIMAP_SPOT_TEXTURE_MAX = 40
+
+-- Opacity range
+MINIMAP_OPACITY_MIN = 20
+MINIMAP_OPACITY_MAX = 100
+
+-- sizePercent range
+MINIMAP_SIZE_PERCENT_MIN = 10
+MINIMAP_SIZE_PERCENT_MAX = 40
+
 -- Orientation values
 MINIMAP_ORIENTATION_NORTH = "north"
 MINIMAP_ORIENTATION_PLAYER = "player"

@@ -206,12 +206,9 @@ local function IsResearchDuplicateItemType(link)
     local isArmor = itemType == ITEMTYPE_ARMOR
         and (armorType == ARMORTYPE_LIGHT
             or armorType == ARMORTYPE_MEDIUM
-            or armorType == ARMORTYPE_HEAVY
-            or armorType == 1
-            or armorType == 2
-            or armorType == 3)
+            or armorType == ARMORTYPE_HEAVY)
     local isWeapon = itemType == ITEMTYPE_WEAPON
-    local isJewelry = (itemType == 3)
+    local isJewelry = (itemType == ITEMTYPE_JEWELRY)
         or (equipType == EQUIP_TYPE_RING)
         or (equipType == EQUIP_TYPE_NECK)
 
@@ -219,8 +216,8 @@ local function IsResearchDuplicateItemType(link)
 end
 
 local function IsResearchDuplicateQualityEnabled(saved, quality)
-    local superiorQuality = ITEM_QUALITY_ARCANE or 3
-    local epicQuality = ITEM_QUALITY_ARTIFACT or 4
+    local superiorQuality = ITEM_QUALITY_SUPERIOR or 3
+    local epicQuality = ITEM_QUALITY_EPIC or 4
     local legendaryQuality = ITEM_QUALITY_LEGENDARY or 5
 
     if quality == superiorQuality then
@@ -239,7 +236,7 @@ local function IsResearchableTraitType(traitType)
         return false
     end
 
-    if traitType == ITEM_TRAIT_TYPE_NONE or traitType == 0 then
+    if traitType == ITEM_TRAIT_TYPE_NONE then
         return false
     end
 
@@ -473,7 +470,7 @@ function MiniMap:CreateControls()
         MINIMAP_ESO_BORDER_COLOR[3],
         MINIMAP_ESO_BORDER_COLOR[4]
     )
-    toolbarBg:SetEdgeTexture("", 1, 1, 2)
+    toolbarBg:SetEdgeTexture("", MINIMAP_EDGE_INSET, MINIMAP_EDGE_INSET, MINIMAP_EDGE_BLEND_MODE)
 
     local buttonSize = 32
     local buttonSpacing = 6
@@ -500,7 +497,7 @@ function MiniMap:CreateControls()
         btnBg:SetAnchorFill(btn)
         btnBg:SetCenterColor(cat.color[1], cat.color[2], cat.color[3], 0.7)
         btnBg:SetEdgeColor(cat.color[1], cat.color[2], cat.color[3], 1)
-        btnBg:SetEdgeTexture("", 1, 1, 2)
+        btnBg:SetEdgeTexture("", MINIMAP_EDGE_INSET, MINIMAP_EDGE_INSET, MINIMAP_EDGE_BLEND_MODE)
 
         local btnLabel = WINDOW_MANAGER:CreateControl("MiniMapToolbarBtn" .. cat.key .. "Label", btn, CT_LABEL)
         btnLabel:SetAnchor(CENTER, btn, CENTER, 0, 0)
@@ -532,7 +529,7 @@ function MiniMap:CreateControls()
         btnBg:SetAnchorFill(btn)
         btnBg:SetCenterColor(0.8, 0.2, 0.2, 0.8)
         btnBg:SetEdgeColor(1, 0.3, 0.3, 1)
-        btnBg:SetEdgeTexture("", 1, 1, 2)
+        btnBg:SetEdgeTexture("", MINIMAP_EDGE_INSET, MINIMAP_EDGE_INSET, MINIMAP_EDGE_BLEND_MODE)
 
         local btnLabel = WINDOW_MANAGER:CreateControl("MiniMapToolbarBtnDeleteLabel", btn, CT_LABEL)
         btnLabel:SetAnchor(CENTER, btn, CENTER, 0, 0)
@@ -625,8 +622,8 @@ function MiniMap:CreateControls()
         local bg = WINDOW_MANAGER:CreateControl(name .. "Bg", btn, CT_BACKDROP)
         bg:SetAnchorFill(btn)
         bg:SetCenterColor(0, 0, 0, 0.7)
-        bg:SetEdgeColor(0.57, 0.56, 0.45, 1)
-        bg:SetEdgeTexture("", 1, 1, 2)
+        bg:SetEdgeColor(MINIMAP_ESO_BORDER_COLOR[1], MINIMAP_ESO_BORDER_COLOR[2], MINIMAP_ESO_BORDER_COLOR[3], MINIMAP_ESO_BORDER_COLOR[4])
+        bg:SetEdgeTexture("", MINIMAP_EDGE_INSET, MINIMAP_EDGE_INSET, MINIMAP_EDGE_BLEND_MODE)
 
         local label = WINDOW_MANAGER:CreateControl(name .. "Label", btn, CT_LABEL)
         label:SetAnchor(CENTER, btn, CENTER, 0, 0)
@@ -637,7 +634,7 @@ function MiniMap:CreateControls()
         btn:SetAnchor(LEFT, anchorTo, anchorTo == self.zoomBar and LEFT or RIGHT, delta, 0)
         btn:SetHandler("OnClicked", function()
             local step = (text == "+") and 1 or -1
-            local newZoom = MiniMapRenderUtils.Clamp((MiniMap.saved.zoom or DEFAULTS.zoom) + step, 1, 16)
+            local newZoom = MiniMapRenderUtils.Clamp((MiniMap.saved.zoom or DEFAULTS.zoom) + step, MINIMAP_ZOOM_MIN, MINIMAP_ZOOM_MAX)
             if newZoom ~= MiniMap.saved.zoom then
                 MiniMap.saved.zoom = newZoom
                 MiniMap:RefreshMap(true)
@@ -678,7 +675,7 @@ function MiniMap:ApplyLayout()
     self.root:SetDimensions(self.size, self.size)
     self.border:SetDimensions(self.size, self.size)
     self.map:SetDimensions(self.mapSize, self.mapSize)
-    self.root:SetAlpha(MiniMapRenderUtils.Clamp(self.saved.opacity or DEFAULTS.opacity, 20, 100) / 100)
+    self.root:SetAlpha(MiniMapRenderUtils.Clamp(self.saved.opacity or DEFAULTS.opacity, MINIMAP_OPACITY_MIN, MINIMAP_OPACITY_MAX) / 100)
     self:ApplyCircularClip()
 
     local playerSize = MiniMapRenderUtils.Clamp(math.floor(self.size * MINIMAP_SIZE_FACTOR_PLAYER), 18, 30)
@@ -867,14 +864,14 @@ function MiniMap:RegisterSettingsMenu()
             type = 'slider',
             name = self:Text('sizeName'),
             tooltip = self:Text('sizeTooltip'),
-            min = 10,
-            max = 40,
+            min = MINIMAP_SIZE_PERCENT_MIN,
+            max = MINIMAP_SIZE_PERCENT_MAX,
             step = 1,
             getFunc = function()
                 return self.saved.sizePercent
             end,
             setFunc = function(value)
-                self.saved.sizePercent = MiniMapRenderUtils.Clamp(value, 10, 40)
+                self.saved.sizePercent = MiniMapRenderUtils.Clamp(value, MINIMAP_SIZE_PERCENT_MIN, MINIMAP_SIZE_PERCENT_MAX)
                 self:ApplyLayout()
             end,
             default = DEFAULTS.sizePercent,
@@ -901,14 +898,14 @@ function MiniMap:RegisterSettingsMenu()
             type = 'slider',
             name = self:Text('opacityName'),
             tooltip = self:Text('opacityTooltip'),
-            min = 20,
-            max = 100,
+            min = MINIMAP_OPACITY_MIN,
+            max = MINIMAP_OPACITY_MAX,
             step = 5,
             getFunc = function()
                 return self.saved.opacity or DEFAULTS.opacity
             end,
             setFunc = function(value)
-                self.saved.opacity = MiniMapRenderUtils.Clamp(value, 20, 100)
+                self.saved.opacity = MiniMapRenderUtils.Clamp(value, MINIMAP_OPACITY_MIN, MINIMAP_OPACITY_MAX)
                 self.root:SetAlpha(self.saved.opacity / 100)
             end,
             default = DEFAULTS.opacity,
@@ -1194,8 +1191,6 @@ function MiniMap:ActivateClosestQuest()
         Print(self:Text("noQuestObjectivesFound"))
     end
 end
-
-local POI_TYPE_WAYSHRINE = 1
 
 function MiniMap:GetNearestWayshrinePosition()
     local px, py = self.playerMapX, self.playerMapY
@@ -1858,7 +1853,7 @@ function MiniMap:HandleSlashCommand(arguments)
             return
         end
 
-        self.saved.sizePercent = MiniMapRenderUtils.Clamp(sizePercent, 10, 40)
+        self.saved.sizePercent = MiniMapRenderUtils.Clamp(sizePercent, MINIMAP_SIZE_PERCENT_MIN, MINIMAP_SIZE_PERCENT_MAX)
         self:ApplyLayout()
         Print(string.format(self:Text("sizeChanged"), self.saved.sizePercent))
     elseif command == MINIMAP_SLASH_ORIENTATION or command == MINIMAP_SLASH_ORIENT then
@@ -1877,7 +1872,7 @@ function MiniMap:HandleSlashCommand(arguments)
             return
         end
 
-        self.saved.opacity = MiniMapRenderUtils.Clamp(opacity, 20, 100)
+        self.saved.opacity = MiniMapRenderUtils.Clamp(opacity, MINIMAP_OPACITY_MIN, MINIMAP_OPACITY_MAX)
         self.root:SetAlpha(self.saved.opacity / 100)
         Print(string.format(self:Text("opacityChanged"), self.saved.opacity))
     elseif command == MINIMAP_SLASH_ZOOM then
@@ -1887,7 +1882,7 @@ function MiniMap:HandleSlashCommand(arguments)
             return
         end
 
-        self.saved.zoom = MiniMapRenderUtils.Clamp(zoom, 1, 16)
+        self.saved.zoom = MiniMapRenderUtils.Clamp(zoom, MINIMAP_ZOOM_MIN, MINIMAP_ZOOM_MAX)
         self:ApplyLayout()
         Print(string.format(self:Text("zoomChanged"), self.saved.zoom))
     elseif command == MINIMAP_SLASH_HIDE then
@@ -2036,7 +2031,7 @@ function MiniMap:Initialize()
         if MiniMap.refreshRateDirty then
             MiniMap.refreshRateDirty = false
             EVENT_MANAGER:UnregisterForUpdate(ADDON_NAME .. "Update")
-            EVENT_MANAGER:RegisterForUpdate(ADDON_NAME .. "Update", MiniMap.saved.refreshRate or 500, OnMinimapUpdate)
+            EVENT_MANAGER:RegisterForUpdate(ADDON_NAME .. "Update", MiniMap.saved.refreshRate or MINIMAP_REFRESH_MS, OnMinimapUpdate)
         end
 
         local sceneShown = MiniMap:IsWorldMapShowing()
@@ -2075,7 +2070,7 @@ function MiniMap:Initialize()
         end
     end
 
-    EVENT_MANAGER:RegisterForUpdate(ADDON_NAME .. "Update", self.saved.refreshRate or 500, OnMinimapUpdate)
+    EVENT_MANAGER:RegisterForUpdate(ADDON_NAME .. "Update", self.saved.refreshRate or MINIMAP_REFRESH_MS, OnMinimapUpdate)
 
     local function RefreshMapAfterLocationChange()
         MiniMap:RefreshMapToPlayerLocation(true)

@@ -65,7 +65,7 @@ function RouteRenderer:Update(playerX, playerY, mapRotation, center, radius, cur
         local dy = localY2 - localY1
         local length = math.sqrt(dx * dx + dy * dy)
         local angle = 0
-        if length > 0.0001 then
+        if length > MINIMAP_EPSILON then
             local unitX = dx / length
             local unitY = dy / length
             angle = MiniMapRenderUtils.GetRotationFromUp(unitX, unitY) + math.pi / 2
