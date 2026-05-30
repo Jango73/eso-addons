@@ -147,6 +147,57 @@ local function ForEachCategory(callback)
     end
 end
 
+local function IsCompanionArmorWithBadTrait(bagId, slotIndex)
+    if not bagId or not slotIndex then
+        return false, nil, nil
+    end
+
+    if not GetItemFilterTypeInfo then
+        return false, nil, nil
+    end
+
+    local filterTypes = { GetItemFilterTypeInfo(bagId, slotIndex) }
+    local isCompanion = ZO_IsElementInNumericallyIndexedTable(filterTypes, ITEMFILTERTYPE_COMPANION)
+    if not isCompanion then
+        return false, nil, nil
+    end
+
+    local link = GetItemLink(bagId, slotIndex)
+    if not link or link == "" then
+        return false, nil, nil
+    end
+
+    local itemType = GetItemLinkItemType(link)
+    if itemType ~= ITEMTYPE_ARMOR then
+        return false, nil, nil
+    end
+
+    local armorType = GetItemLinkArmorType(link)
+    if armorType ~= ARMORTYPE_LIGHT and armorType ~= ARMORTYPE_MEDIUM and armorType ~= ARMORTYPE_HEAVY then
+        return false, nil, nil
+    end
+
+    local traitType = GetItemLinkTraitType(link)
+    if not traitType then
+        return false, nil, nil
+    end
+
+    local isTanking = COMPANION_TANKING_TRAITS[traitType]
+    local isDamage = COMPANION_DAMAGE_TRAITS[traitType]
+
+    if isTanking and isDamage then
+        return false, nil, nil
+    end
+
+    if (armorType == ARMORTYPE_LIGHT or armorType == ARMORTYPE_MEDIUM) and isTanking then
+        return true, traitType, armorType
+    elseif armorType == ARMORTYPE_HEAVY and isDamage then
+        return true, traitType, armorType
+    end
+
+    return false, nil, nil
+end
+
 local function IsResearchDuplicateItemType(link)
     local itemType = GetItemLinkItemType(link)
     local equipType = GetItemLinkEquipType(link)
@@ -1573,6 +1624,7 @@ function MiniMap:UpdateResearchDuplicateSlotOverlay(slotControl, slotData)
     local overlay = slotControl._researchDuplicateOverlay
     local keepLabel = slotControl._researchDuplicateKeepLabel
     local bagId, slotIndex = GetSlotBagAndIndex(slotControl, slotData)
+    local isCompanionSell, companionTraitType, companionArmorType = IsCompanionArmorWithBadTrait(bagId, slotIndex)
 
     if not researchIndicator then
         local anchorTarget = slotControl:GetNamedChild("Icon")
@@ -1605,24 +1657,33 @@ function MiniMap:UpdateResearchDuplicateSlotOverlay(slotControl, slotData)
         overlay:SetAnchor(CENTER, anchorTarget, CENTER, 0, 0)
         overlay:SetDrawLevel(50)
 
-        local shouldShowFallback = bagId ~= nil and slotIndex ~= nil and self:IsResearchDuplicateSellSlot(bagId, slotIndex)
+        local researchSellFallback = bagId ~= nil and slotIndex ~= nil and self:IsResearchDuplicateSellSlot(bagId, slotIndex)
+        local shouldShowFallback = researchSellFallback or isCompanionSell
         overlay:SetHidden(not shouldShowFallback)
 
         if shouldShowFallback then
-            local keepName = self:GetResearchDuplicateKeepItemName(bagId, slotIndex)
-            if keepName then
-                keepLabel:ClearAnchors()
-                local iconControl = slotControl:GetNamedChild("Icon")
-                if iconControl then
-                    keepLabel:SetAnchor(TOPLEFT, iconControl, BOTTOMLEFT, 60, -8)
-                else
-                    keepLabel:SetAnchor(TOPLEFT, slotControl, TOPLEFT, 60, -8)
-                end
-                keepLabel:SetText(keepName)
-                self:ApplyResearchDuplicateKeepLabelColor(keepLabel, bagId, slotIndex)
+            keepLabel:ClearAnchors()
+            local iconControl = slotControl:GetNamedChild("Icon")
+            if iconControl then
+                keepLabel:SetAnchor(TOPLEFT, iconControl, BOTTOMLEFT, 60, -8)
+            else
+                keepLabel:SetAnchor(TOPLEFT, slotControl, TOPLEFT, 60, -8)
+            end
+
+            if isCompanionSell then
+                local traitName = Locale.GetTraitName(companionTraitType)
+                keepLabel:SetText(self:Text("companionSell"):format(traitName))
+                keepLabel:SetColor(1, 0.1, 0.1, 1)
                 keepLabel:SetHidden(false)
             else
-                keepLabel:SetHidden(true)
+                local keepName = self:GetResearchDuplicateKeepItemName(bagId, slotIndex)
+                if keepName then
+                    keepLabel:SetText(keepName)
+                    self:ApplyResearchDuplicateKeepLabelColor(keepLabel, bagId, slotIndex)
+                    keepLabel:SetHidden(false)
+                else
+                    keepLabel:SetHidden(true)
+                end
             end
         else
             keepLabel:SetHidden(true)
@@ -1652,7 +1713,8 @@ function MiniMap:UpdateResearchDuplicateSlotOverlay(slotControl, slotData)
         slotControl._researchDuplicateKeepLabel = keepLabel
     end
 
-    local shouldShow = bagId ~= nil and slotIndex ~= nil and self:IsResearchDuplicateSellSlot(bagId, slotIndex)
+    local researchSell = bagId ~= nil and slotIndex ~= nil and self:IsResearchDuplicateSellSlot(bagId, slotIndex)
+    local shouldShow = researchSell or isCompanionSell
     if shouldShow and researchIndicator.IsHidden and researchIndicator:IsHidden() then
         shouldShow = false
     end
@@ -1660,20 +1722,28 @@ function MiniMap:UpdateResearchDuplicateSlotOverlay(slotControl, slotData)
     overlay:SetHidden(not shouldShow)
 
     if shouldShow then
-        local keepName = self:GetResearchDuplicateKeepItemName(bagId, slotIndex)
-        if keepName then
-            keepLabel:ClearAnchors()
-            local iconControl = slotControl:GetNamedChild("Icon")
-            if iconControl then
-                keepLabel:SetAnchor(TOPLEFT, iconControl, BOTTOMLEFT, 60, -8)
-            else
-                keepLabel:SetAnchor(TOPLEFT, slotControl, TOPLEFT, 60, -8)
-            end
-            keepLabel:SetText(keepName)
-            self:ApplyResearchDuplicateKeepLabelColor(keepLabel, bagId, slotIndex)
+        keepLabel:ClearAnchors()
+        local iconControl = slotControl:GetNamedChild("Icon")
+        if iconControl then
+            keepLabel:SetAnchor(TOPLEFT, iconControl, BOTTOMLEFT, 60, -8)
+        else
+            keepLabel:SetAnchor(TOPLEFT, slotControl, TOPLEFT, 60, -8)
+        end
+
+        if isCompanionSell then
+            local traitName = Locale.GetTraitName(companionTraitType)
+            keepLabel:SetText(self:Text("companionSell"):format(traitName))
+            keepLabel:SetColor(1, 0.1, 0.1, 1)
             keepLabel:SetHidden(false)
         else
-            keepLabel:SetHidden(true)
+            local keepName = self:GetResearchDuplicateKeepItemName(bagId, slotIndex)
+            if keepName then
+                keepLabel:SetText(keepName)
+                self:ApplyResearchDuplicateKeepLabelColor(keepLabel, bagId, slotIndex)
+                keepLabel:SetHidden(false)
+            else
+                keepLabel:SetHidden(true)
+            end
         end
     else
         keepLabel:SetHidden(true)

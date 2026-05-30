@@ -151,6 +151,7 @@ Locale.STRINGS = {
         compassS = 'S',
         compassE = 'E',
         compassW = 'W',
+        companionSell = 'Trait %s irrelevant for this piece',
     },
     fr = {
         helpCorner = '/minimap corner tl, tr, bl, br, left, right, top, bottom',
@@ -287,6 +288,7 @@ Locale.STRINGS = {
         compassS = 'S',
         compassE = 'E',
         compassW = 'O',
+        companionSell = 'Trait %s inutile sur cette pièce',
     },
     es = {
         helpCorner = '/minimap corner tl, tr, bl, br, left, right, top, bottom',
@@ -423,6 +425,7 @@ Locale.STRINGS = {
         compassS = 'S',
         compassE = 'E',
         compassW = 'O',
+        companionSell = 'Rasgo %s irrelevante para esta pieza',
     },
     ja = {
         helpCorner = '/minimap corner tl, tr, bl, br, left, right, top, bottom',
@@ -559,6 +562,7 @@ Locale.STRINGS = {
         compassS = '南',
         compassE = '東',
         compassW = '西',
+        companionSell = '特性%sはこの装備では無関係',
     },
     de = {
         helpCorner = '/minimap corner tl, tr, bl, br, left, right, top, bottom',
@@ -695,6 +699,7 @@ Locale.STRINGS = {
         compassS = 'S',
         compassE = 'O',
         compassW = 'W',
+        companionSell = 'Merkmal %s irrelevant für dieses Teil',
     },
     ru = {
         helpCorner = '/minimap corner tl, tr, bl, br, left, right, top, bottom',
@@ -831,6 +836,7 @@ Locale.STRINGS = {
         compassS = 'Ю',
         compassE = 'В',
         compassW = 'З',
+        companionSell = 'Свойство %s не подходит для этой части',
     },
     zh = {
         helpCorner = '/minimap corner tl, tr, bl, br, left, right, top, bottom',
@@ -967,6 +973,7 @@ Locale.STRINGS = {
         compassS = '南',
         compassE = '东',
         compassW = '西',
+        companionSell = '特质%s与此装备无关',
     },
 }
 
