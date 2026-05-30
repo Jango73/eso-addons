@@ -14,6 +14,7 @@ DEFAULTS = {
     researchIncludeSuperior = true,
     researchIncludeEpic = false,
     researchIncludeLegendary = false,
+    autoActivateQuest = false,
 }
 
 CORNERS = {

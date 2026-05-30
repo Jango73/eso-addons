@@ -923,6 +923,19 @@ function MiniMap:RegisterSettingsMenu()
             width = 'full',
         },
         {
+            type = 'checkbox',
+            name = self:Text('autoActivateQuestName'),
+            tooltip = self:Text('autoActivateQuestTooltip'),
+            getFunc = function()
+                return self.saved.autoActivateQuest
+            end,
+            setFunc = function(value)
+                self.saved.autoActivateQuest = value
+            end,
+            default = DEFAULTS.autoActivateQuest,
+            width = 'full',
+        },
+        {
             type = 'header',
             name = self:Text('researchFiltersHeader'),
             width = 'full',
@@ -1057,30 +1070,47 @@ function MiniMap:ActivateClosestQuest()
     local closestDistSq = math.huge
     local closestQuestIndex = nil
     local closestQuestName = nil
-
     local maxQuests = MAX_JOURNAL_QUESTS or 25
-    for questIndex = 1, maxQuests do
-        if not IsValidQuestIndex(questIndex) then
-            break
-        end
-        local questName = GetJournalQuestName(questIndex)
-        local mainStepIndex = QUEST_MAIN_STEP_INDEX or 1
-        local numSteps = GetJournalQuestNumSteps and GetJournalQuestNumSteps(questIndex) or mainStepIndex
 
-        for stepIndex = mainStepIndex, numSteps do
-            local numPositions = WORLD_MAP_QUEST_BREADCRUMBS:GetNumQuestConditionPositions(questIndex, stepIndex)
-            if numPositions then
-                for conditionIndex = 1, numPositions do
-                    local positionData = WORLD_MAP_QUEST_BREADCRUMBS:GetQuestConditionPosition(questIndex, stepIndex, conditionIndex)
-                    if positionData and positionData.insideCurrentMapWorld and positionData.xLoc and positionData.yLoc then
-                        local dx = positionData.xLoc - px
-                        local dy = positionData.yLoc - py
-                        local distSq = dx * dx + dy * dy
-                        if distSq < closestDistSq then
-                            closestDistSq = distSq
-                            closestQuestIndex = questIndex
-                            closestQuestName = questName
+    for questIndex = 1, maxQuests do
+        if IsValidQuestIndex(questIndex) then
+            local questName = GetJournalQuestName(questIndex)
+            local questType = GetJournalQuestType and GetJournalQuestType(questIndex) or -1
+            local breakLoop = false
+
+            if not (GetJournalQuestType and questType == QUEST_TYPE_MAIN_STORY) then
+                local mainStepIndex = QUEST_MAIN_STEP_INDEX or 1
+                local numSteps = GetJournalQuestNumSteps and GetJournalQuestNumSteps(questIndex) or mainStepIndex
+
+                for stepIndex = mainStepIndex, numSteps do
+                    local numPositions = WORLD_MAP_QUEST_BREADCRUMBS:GetNumQuestConditionPositions(questIndex, stepIndex)
+
+                    if numPositions then
+                        for conditionIndex = 1, numPositions do
+                            local positionData = WORLD_MAP_QUEST_BREADCRUMBS:GetQuestConditionPosition(questIndex, stepIndex, conditionIndex)
+
+                            if positionData and positionData.insideCurrentMapWorld and positionData.xLoc and positionData.yLoc then
+
+                                if stepIndex == 1 and positionData.teleportNPCId and positionData.teleportNPCId > 0 then
+                                    breakLoop = true
+                                    break
+                                end
+
+                                local dx = positionData.xLoc - px
+                                local dy = positionData.yLoc - py
+                                local distSq = dx * dx + dy * dy
+
+                                if distSq < closestDistSq then
+                                    closestDistSq = distSq
+                                    closestQuestIndex = questIndex
+                                    closestQuestName = questName
+                                end
+                            end
                         end
+                    end
+
+                    if breakLoop then
+                        break
                     end
                 end
             end
@@ -2044,6 +2074,16 @@ function MiniMap:Initialize()
         end
 
         AddSpotAtPlayer(category)
+    end)
+
+    EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_QUEST_COMPLETE", EVENT_QUEST_COMPLETE, function(eventCode, questName, level, prevExp, curExp, rank, prevPoints, curPoints)
+        if not MiniMap.saved.autoActivateQuest then
+            return
+        end
+
+        zo_callLater(function()
+            MiniMap:ActivateClosestQuest()
+        end, 2000)
     end)
 end
 
