@@ -24,4 +24,9 @@ IndicatorRenderer.lua
 NoteRenderer.lua
 WorldMapOverlay.lua
 MiniMap.lua
+ResearchDuplicate.lua
+QuestHelper.lua
+SettingsPanel.lua
+SlashCommands.lua
+EventManager.lua
 bindings.xml

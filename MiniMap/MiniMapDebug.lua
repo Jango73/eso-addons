@@ -1,7 +1,5 @@
 MiniMapDebug = {}
 
-local DEBUG_ENABLED = true
-
 function Debug(message)
     if not DEBUG_ENABLED then
         return
