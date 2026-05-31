@@ -52,6 +52,35 @@ local function SolveTSP(spots, startX, startY)
         end
     end
 
+    local n = #route
+    local improved = true
+    local maxIter = 50
+    local iter = 0
+    while improved and iter < maxIter do
+        improved = false
+        iter = iter + 1
+        for i = 1, n - 2 do
+            for j = i + 2, n - 1 do
+                local xi, yi = route[i].x, route[i].y
+                local xip1, yip1 = route[i + 1].x, route[i + 1].y
+                local xj, yj = route[j].x, route[j].y
+                local xjp1, yjp1 = route[j + 1].x, route[j + 1].y
+
+                local oldDist = Distance(xi, yi, xip1, yip1) + Distance(xj, yj, xjp1, yjp1)
+                local newDist = Distance(xi, yi, xj, yj) + Distance(xip1, yip1, xjp1, yjp1)
+
+                if newDist + 0.0001 < oldDist then
+                    local t = {}
+                    for k = 1, i do t[k] = route[k] end
+                    for k = j, i + 1, -1 do t[#t + 1] = route[k] end
+                    for k = j + 1, n do t[#t + 1] = route[k] end
+                    route = t
+                    improved = true
+                end
+            end
+        end
+    end
+
     return route
 end
 

@@ -15,9 +15,6 @@
     - if player is DPS, only items with [Divines | Precise | Sharpened | Nirnhoned | Bloodthirsty | ...] are interesting
 - when an item does not satisfy the table, marke it as sellable
 
-## 2-opt TSP improvement
-Add a 2-opt pass after the greedy nearest-neighbor solver for shorter routes.
-
 ## Collected spot tracking
 Record a timestamp when a spot is looted (via auto-save). Render the marker in different visual states based on elapsed time since collection, with configurable per-category respawn windows in settings (defaults: ore/wood ~8min, plant/rune ~6min, water ~5min, etc.):
   - `0 to respawnTime*0.5` → greyed out / low opacity (still dead)
