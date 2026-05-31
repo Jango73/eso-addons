@@ -1,6 +1,6 @@
 
 ADDON_NAME = "MiniMap"
-DEBUG_ENABLED = false
+DEBUG_ENABLED = true
 
 MINIMAP_ZOOM_MIN = 1
 MINIMAP_ZOOM_MAX = 16
@@ -197,3 +197,17 @@ MINIMAP_SIZE_PERCENT_MAX = 40
 -- Orientation values
 MINIMAP_ORIENTATION_NORTH = "north"
 MINIMAP_ORIENTATION_PLAYER = "player"
+
+-- Default respawn time in seconds (10 minutes)
+MINIMAP_DEFAULT_RESPAWN_TIME = 600
+
+-- Spot alpha values based on respawn state (0-1)
+MINIMAP_SPOT_ALPHA_COLLECTED = 0.25
+MINIMAP_SPOT_ALPHA_RECHARGING = 0.55
+MINIMAP_SPOT_ALPHA_AVAILABLE = 1.0
+
+-- Categories whose spots never respawn (one-time collectibles)
+MINIMAP_NON_RESPAWNING_CATEGORIES = {
+    book = true,
+    shard = true,
+}

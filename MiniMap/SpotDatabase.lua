@@ -120,7 +120,7 @@ function SpotDatabase:AddSpot(x, y, category, mapName)
     local candidate = { x = x, y = y }
     for i, s in ipairs(self._data[currentMap][category]) do
         if IsDuplicate(s, candidate) then
-            self._data[currentMap][category][i] = { x = x, y = y, ts = GetTimeStamp() }
+            self._data[currentMap][category][i] = { x = x, y = y, ts = GetTimeStamp(), collectedTs = GetTimeStamp() }
             self:InvalidateMergedCache(currentMap)
             return true, false
         end
@@ -155,7 +155,7 @@ function SpotDatabase:AddSpot(x, y, category, mapName)
         end
     end
 
-    table.insert(self._data[currentMap][category], { x = x, y = y, ts = GetTimeStamp() })
+    table.insert(self._data[currentMap][category], { x = x, y = y, ts = GetTimeStamp(), collectedTs = GetTimeStamp() })
     self:InvalidateMergedCache(currentMap)
     return true, true
 end
@@ -319,6 +319,45 @@ function SpotDatabase:RemoveSpotsInRadius(x, y, radius, category, mapName)
     end
 
     return removed, total
+end
+
+function SpotDatabase:SetCollectedTimestamp(x, y, mapName)
+    if not self._data or not x or not y then return end
+    local currentMap = mapName or MiniMapRenderUtils.GetCurrentMapKey()
+    if not currentMap then return end
+
+    local thresholdSq = MINIMAP_SPOT_DUPLICATE_THRESHOLD * MINIMAP_SPOT_DUPLICATE_THRESHOLD
+    local now = GetTimeStamp()
+
+    if self._data[currentMap] then
+        for catKey, spots in pairs(self._data[currentMap]) do
+            if type(catKey) == "string" and type(spots) == "table" and not MINIMAP_NON_RESPAWNING_CATEGORIES[catKey] then
+                for _, spot in ipairs(spots) do
+                    local dx = spot.x - x
+                    local dy = spot.y - y
+                    if (dx * dx + dy * dy) <= thresholdSq then
+                        spot.collectedTs = now
+                        Debug(string.format("Reset collection timer on %s spot at (%.4f, %.4f)", catKey, spot.x, spot.y))
+                    end
+                end
+            end
+        end
+    end
+
+    if self._builtinData and self._builtinData[currentMap] then
+        for catKey, spots in pairs(self._builtinData[currentMap]) do
+            if type(catKey) == "string" and type(spots) == "table" and not MINIMAP_NON_RESPAWNING_CATEGORIES[catKey] then
+                for _, spot in ipairs(spots) do
+                    local dx = spot.x - x
+                    local dy = spot.y - y
+                    if (dx * dx + dy * dy) <= thresholdSq then
+                        spot.collectedTs = now
+                        Debug(string.format("Reset collection timer on builtin %s spot at (%.4f, %.4f)", catKey, spot.x, spot.y))
+                    end
+                end
+            end
+        end
+    end
 end
 
 function SpotDatabase:GetSpots(category, mapName)

@@ -175,6 +175,22 @@ function MiniMap:RegisterSettingsMenu()
             width = 'full',
         },
         {
+            type = 'slider',
+            name = self:Text('respawnTimeName'),
+            tooltip = self:Text('respawnTimeTooltip'),
+            min = 60,
+            max = 3600,
+            step = 60,
+            getFunc = function()
+                return self.saved.respawnTime or MINIMAP_DEFAULT_RESPAWN_TIME
+            end,
+            setFunc = function(value)
+                self.saved.respawnTime = value
+            end,
+            default = MINIMAP_DEFAULT_RESPAWN_TIME,
+            width = 'full',
+        },
+        {
             type = 'checkbox',
             name = self:Text('showToolbarName'),
             tooltip = self:Text('showToolbarTooltip'),

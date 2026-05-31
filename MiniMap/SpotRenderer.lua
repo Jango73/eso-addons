@@ -93,6 +93,23 @@ function SpotRenderer:HideAll()
     end)
 end
 
+local function GetSpotAlpha(spot, categoryKey, now, respawnTime)
+    if MINIMAP_NON_RESPAWNING_CATEGORIES[categoryKey] then
+        return MINIMAP_SPOT_ALPHA_AVAILABLE
+    end
+    if not spot.collectedTs then
+        return MINIMAP_SPOT_ALPHA_AVAILABLE
+    end
+    local elapsed = now - spot.collectedTs
+    local half = respawnTime * 0.5
+    if elapsed < half then
+        return MINIMAP_SPOT_ALPHA_COLLECTED
+    elseif elapsed < respawnTime then
+        return MINIMAP_SPOT_ALPHA_RECHARGING
+    end
+    return MINIMAP_SPOT_ALPHA_AVAILABLE
+end
+
 function SpotRenderer:Update(playerX, playerY, mapRotation, center, radius, margin, currentMapKey)
     self:EnsureInitialized()
 
@@ -101,6 +118,9 @@ function SpotRenderer:Update(playerX, playerY, mapRotation, center, radius, marg
         self:HideAll()
         return
     end
+
+    local respawnTime = (MiniMap.saved and MiniMap.saved.respawnTime) or MINIMAP_DEFAULT_RESPAWN_TIME
+    local now = GetTimeStamp()
 
     ForEachCategory(function(cat)
         local markers = self.markers[cat.key]
@@ -123,6 +143,8 @@ function SpotRenderer:Update(playerX, playerY, mapRotation, center, radius, marg
                 local markerData = markers[markerIndex]
                 local markerSize = isTexture and self.textureMarkerSize or self.backdropMarkerSize
                 self:UpdateMarkerControl(markerData.control, localX, localY, markerSize)
+                local alpha = GetSpotAlpha(spot, cat.key, now, respawnTime)
+                markerData.control:SetAlpha(alpha)
                 markerIndex = markerIndex + 1
             end
         end

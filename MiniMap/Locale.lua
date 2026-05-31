@@ -152,6 +152,8 @@ Locale.STRINGS = {
         compassE = 'E',
         compassW = 'W',
         companionSell = 'Trait %s irrelevant for this piece',
+        respawnTimeName = 'Respawn time',
+        respawnTimeTooltip = 'How long before a collected spot respawns (in seconds). Default: 600 (10 minutes).',
     },
     fr = {
         helpCorner = '/minimap corner tl, tr, bl, br, left, right, top, bottom',

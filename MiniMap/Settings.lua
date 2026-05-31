@@ -15,6 +15,7 @@ DEFAULTS = {
     researchIncludeEpic = false,
     researchIncludeLegendary = false,
     autoActivateQuest = false,
+    respawnTime = 600,
 }
 
 CORNERS = {

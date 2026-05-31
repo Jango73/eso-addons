@@ -135,15 +135,23 @@ function MiniMap:Initialize()
     end)
 
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_LOOT", EVENT_LOOT_RECEIVED, function(eventCode, characterName, itemName, quantity, lootType, lootedBySelf)
-        if not MiniMap.saved.autoSaveSpots then
-            return
-        end
+        DebugCoalesced("LOOT_RECEIVED", string.format("lootType=%s category=%s", tostring(lootType), tostring(SpotDatabase:GetResourceCategory(lootType))))
+
         if lastLootTargetType == "MONSTER" then
             return
         end
-        
+
         local category = SpotDatabase:GetResourceCategory(lootType)
         if not category then
+            return
+        end
+
+        local x, y = GetMapPlayerPosition("player")
+        if x and y then
+            SpotDatabase:SetCollectedTimestamp(x, y)
+        end
+
+        if not MiniMap.saved.autoSaveSpots then
             return
         end
 
