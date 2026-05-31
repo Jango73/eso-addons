@@ -135,8 +135,6 @@ function MiniMap:Initialize()
     end)
 
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_LOOT", EVENT_LOOT_RECEIVED, function(eventCode, characterName, itemName, quantity, lootType, lootedBySelf)
-        DebugCoalesced("LOOT_RECEIVED", string.format("lootType=%s category=%s", tostring(lootType), tostring(SpotDatabase:GetResourceCategory(lootType))))
-
         if lastLootTargetType == "MONSTER" then
             return
         end

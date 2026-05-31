@@ -337,7 +337,6 @@ function SpotDatabase:SetCollectedTimestamp(x, y, mapName)
                     local dy = spot.y - y
                     if (dx * dx + dy * dy) <= thresholdSq then
                         spot.collectedTs = now
-                        Debug(string.format("Reset collection timer on %s spot at (%.4f, %.4f)", catKey, spot.x, spot.y))
                     end
                 end
             end
@@ -352,7 +351,6 @@ function SpotDatabase:SetCollectedTimestamp(x, y, mapName)
                     local dy = spot.y - y
                     if (dx * dx + dy * dy) <= thresholdSq then
                         spot.collectedTs = now
-                        Debug(string.format("Reset collection timer on builtin %s spot at (%.4f, %.4f)", catKey, spot.x, spot.y))
                     end
                 end
             end
