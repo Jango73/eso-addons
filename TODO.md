@@ -14,3 +14,22 @@
     - if player is healer, only items with [Powered | Charged | Infused | ...] are interesting
     - if player is DPS, only items with [Divines | Precise | Sharpened | Nirnhoned | Bloodthirsty | ...] are interesting
 - when an item does not satisfy the table, marke it as sellable
+
+## 2-opt TSP improvement
+Add a 2-opt pass after the greedy nearest-neighbor solver for shorter routes.
+
+## Collected spot tracking
+Record a timestamp when a spot is looted (via auto-save). Render the marker in different visual states based on elapsed time since collection, with configurable per-category respawn windows in settings (defaults: ore/wood ~8min, plant/rune ~6min, water ~5min, etc.):
+  - `0 to respawnTime*0.5` → greyed out / low opacity (still dead)
+  - `respawnTime*0.5 to respawnTime` → semi-transparent (may have respawned)
+  - `> respawnTime` → full color (likely respawned)
+Auto-mark on loot when auto-save is enabled.
+
+## Spot category visibility filter
+Toggle which categories are drawn on the minimap independently of route selection.
+
+## Open route (no return)
+Option to end at the last spot instead of closing the TSP cycle back to start.
+
+## Spot-attached notes
+Allow attaching a text note to a specific map spot (e.g., "guarded by mob", "hidden path").
