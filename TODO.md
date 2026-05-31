@@ -16,11 +16,11 @@
 - when an item does not satisfy the table, marke it as sellable
 
 ## Collected spot tracking
-Record a timestamp when a spot is looted (via auto-save). Render the marker in different visual states based on elapsed time since collection, with configurable per-category respawn windows in settings (defaults: ore/wood ~8min, plant/rune ~6min, water ~5min, etc.):
+When looting, whether "auto save spots" is ACTIVE OR NOT, check all spots that are in a radius of MINIMAP_SPOT_DUPLICATE_THRESHOLD : record a timestamp.
+Render the marker in different visual states based on elapsed time since collection, with configurable respawn time: default 10 min.
   - `0 to respawnTime*0.5` → greyed out / low opacity (still dead)
   - `respawnTime*0.5 to respawnTime` → semi-transparent (may have respawned)
   - `> respawnTime` → full color (likely respawned)
-Auto-mark on loot when auto-save is enabled.
 
 ## Spot category visibility filter
 Toggle which categories are drawn on the minimap independently of route selection.
