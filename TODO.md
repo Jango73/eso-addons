@@ -16,8 +16,5 @@ When the current quest objective is a door (zone, house, dungeon, boat, ...), or
     - if player is DPS, only items with [Divines | Precise | Sharpened | Nirnhoned | Bloodthirsty | ...] are interesting
 - when an item does not satisfy the table, marke it as sellable
 
-## Feature : Spot category visibility filter
-Toggle which categories are drawn on the minimap independently of route selection.
-
 ## Feature : Spot-attached notes
 Allow attaching a text note to a specific map spot (e.g., "guarded by mob", "hidden path").

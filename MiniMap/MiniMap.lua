@@ -242,7 +242,7 @@ function MiniMap:CreateControls()
     self.toolbarBg = toolbarBg
 
     self.spotRenderer = SpotRenderer
-    self.spotRenderer:Init(self)
+    self.spotRenderer:Init(self, self.routeManager)
 
     self.noteRenderer = NoteRenderer
     self.noteRenderer:Init(self)

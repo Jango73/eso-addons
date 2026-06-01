@@ -9,8 +9,9 @@ local function ForEachCategory(callback)
     end
 end
 
-function SpotRenderer:Init(owner)
+function SpotRenderer:Init(owner, routeManager)
     self.owner = owner
+    self.routeManager = routeManager
     self.markers = {}
     self.initialized = false
     self.backdropMarkerSize = 0
@@ -110,6 +111,23 @@ local function GetSpotAlpha(spot, categoryKey, now, respawnTime)
     return MINIMAP_SPOT_ALPHA_AVAILABLE
 end
 
+local function GetCategoriesForRoute(routeManager)
+    if not routeManager or not routeManager:IsRouteActive() then
+        return nil
+    end
+
+    local selected = routeManager:GetSelectedCategories()
+    if #selected == 1 and selected[1] == "all" then
+        return nil
+    end
+
+    local catSet = {}
+    for _, catKey in ipairs(selected) do
+        catSet[catKey] = true
+    end
+    return catSet
+end
+
 function SpotRenderer:Update(playerX, playerY, mapRotation, center, radius, margin, currentMapKey)
     self:EnsureInitialized()
 
@@ -119,10 +137,20 @@ function SpotRenderer:Update(playerX, playerY, mapRotation, center, radius, marg
         return
     end
 
+    local routeCategories = GetCategoriesForRoute(self.routeManager)
+
     local respawnTime = (MiniMap.saved and MiniMap.saved.respawnTime) or MINIMAP_DEFAULT_RESPAWN_TIME
     local now = GetTimeStamp()
 
     ForEachCategory(function(cat)
+        if routeCategories and not routeCategories[cat.key] then
+            local markers = self.markers[cat.key]
+            for i = 1, #markers do
+                markers[i].control:SetHidden(true)
+            end
+            return
+        end
+
         local markers = self.markers[cat.key]
         local spots = zoneSpots[cat.key] or {}
         local markerIndex = 1
