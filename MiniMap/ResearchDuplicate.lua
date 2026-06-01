@@ -62,6 +62,42 @@ local function IsCompanionArmorWithBadTrait(bagId, slotIndex)
     return false, nil, nil
 end
 
+local function IsPlayerArmorWithBadTrait(bagId, slotIndex)
+    if not bagId or not slotIndex then
+        return false, nil
+    end
+
+    local link = GetItemLink(bagId, slotIndex)
+    if not link or link == "" then
+        return false, nil
+    end
+
+    local itemType = GetItemLinkItemType(link)
+    if itemType ~= ITEMTYPE_ARMOR then
+        return false, nil
+    end
+
+    local armorType = GetItemLinkArmorType(link)
+    if armorType ~= ARMORTYPE_LIGHT and armorType ~= ARMORTYPE_MEDIUM and armorType ~= ARMORTYPE_HEAVY then
+        return false, nil
+    end
+
+    if GetItemRequiredLevel and GetItemRequiredLevel(bagId, slotIndex) < 50 then
+        return false, nil
+    end
+
+    local traitType = GetItemLinkTraitType(link)
+    if not traitType then
+        return false, nil
+    end
+
+    if PC_TANKING_TRAITS[traitType] and (armorType == ARMORTYPE_LIGHT or armorType == ARMORTYPE_MEDIUM) then
+        return true, traitType
+    end
+
+    return false, nil
+end
+
 local function IsResearchDuplicateItemType(link)
     local itemType = GetItemLinkItemType(link)
     local equipType = GetItemLinkEquipType(link)
@@ -195,11 +231,11 @@ end
 local function BuildResearchDuplicateResults(saved, includeBank)
     local groups = BuildResearchDuplicateGroups(saved, includeBank)
     local dupes = {}
-    local sellSlots = {}
+    local excessSlots = {}
     local keepSlots = {}
-    local sellToKeepIds = {}
-    local sellToKeepTraitTypes = {}
-    local sellToKeepQualities = {}
+    local excessToKeepIds = {}
+    local excessToKeepTraitTypes = {}
+    local excessToKeepQualities = {}
 
     for _, data in pairs(groups) do
         if data.count > 1 then
@@ -211,21 +247,21 @@ local function BuildResearchDuplicateResults(saved, includeBank)
                 local isKeepSlot = data.keepSlot
                     and slotData.uniqueId == data.keepSlot.uniqueId
                 if not isKeepSlot and slotData.uniqueId then
-                    sellSlots[slotData.uniqueId] = true
-                    sellToKeepIds[slotData.uniqueId] = data.keepSlot.uniqueId
-                    sellToKeepTraitTypes[slotData.uniqueId] = data.traitType
-                    sellToKeepQualities[slotData.uniqueId] = data.quality
+                    excessSlots[slotData.uniqueId] = true
+                    excessToKeepIds[slotData.uniqueId] = data.keepSlot.uniqueId
+                    excessToKeepTraitTypes[slotData.uniqueId] = data.traitType
+                    excessToKeepQualities[slotData.uniqueId] = data.quality
                 end
             end
         end
     end
 
     table.sort(dupes, function(a, b) return a.count > b.count end)
-    local sellCount = 0
-    for _ in pairs(sellSlots) do
-        sellCount = sellCount + 1
+    local excessCount = 0
+    for _ in pairs(excessSlots) do
+        excessCount = excessCount + 1
     end
-    return dupes, sellSlots, keepSlots, sellToKeepIds, sellToKeepTraitTypes, sellToKeepQualities
+    return dupes, excessSlots, keepSlots, excessToKeepIds, excessToKeepTraitTypes, excessToKeepQualities
 end
 
 local function GetSlotBagAndIndex(slotControl, slotData)
@@ -293,7 +329,7 @@ function MiniMap:RefreshResearchDuplicateOverlays()
     end
 end
 
-function MiniMap:IsResearchDuplicateSellSlot(bagId, slotIndex)
+function MiniMap:IsResearchDuplicateExcessSlot(bagId, slotIndex)
     if bagId ~= BAG_BACKPACK and bagId ~= BAG_BANK then
         return false
     end
@@ -303,13 +339,13 @@ function MiniMap:IsResearchDuplicateSellSlot(bagId, slotIndex)
         return false
     end
 
-    if self._researchDuplicateCacheDirty or not self._researchDuplicateSellSlots then
-        local _, sellSlots, keepSlots, sellToKeepIds, sellToKeepTraitTypes, sellToKeepQualities = BuildResearchDuplicateResults(self.saved, true)
-        self._researchDuplicateSellSlots = sellSlots
+    if self._researchDuplicateCacheDirty or not self._researchDuplicateExcessSlots then
+        local _, excessSlots, keepSlots, excessToKeepIds, excessToKeepTraitTypes, excessToKeepQualities = BuildResearchDuplicateResults(self.saved, true)
+        self._researchDuplicateExcessSlots = excessSlots
         self._researchDuplicateKeepSlots = keepSlots
-        self._researchDuplicateSellToKeepIds = sellToKeepIds
-        self._researchDuplicateSellToKeepTraitTypes = sellToKeepTraitTypes
-        self._researchDuplicateSellToKeepQualities = sellToKeepQualities
+        self._researchDuplicateExcessToKeepIds = excessToKeepIds
+        self._researchDuplicateExcessToKeepTraitTypes = excessToKeepTraitTypes
+        self._researchDuplicateExcessToKeepQualities = excessToKeepQualities
         self._researchDuplicateCacheDirty = false
     end
 
@@ -317,7 +353,7 @@ function MiniMap:IsResearchDuplicateSellSlot(bagId, slotIndex)
         return false
     end
 
-    return self._researchDuplicateSellSlots[uniqueId] or false
+    return self._researchDuplicateExcessSlots[uniqueId] or false
 end
 
 function MiniMap:GetResearchDuplicateKeepItemName(bagId, slotIndex)
@@ -326,13 +362,13 @@ function MiniMap:GetResearchDuplicateKeepItemName(bagId, slotIndex)
         return nil
     end
 
-    if self._researchDuplicateCacheDirty or not self._researchDuplicateSellToKeepIds then
-        self:IsResearchDuplicateSellSlot(bagId, slotIndex)
+    if self._researchDuplicateCacheDirty or not self._researchDuplicateExcessToKeepIds then
+        self:IsResearchDuplicateExcessSlot(bagId, slotIndex)
     end
 
-    local keepId = self._researchDuplicateSellToKeepIds and self._researchDuplicateSellToKeepIds[uniqueId]
+    local keepId = self._researchDuplicateExcessToKeepIds and self._researchDuplicateExcessToKeepIds[uniqueId]
     if keepId then
-        local traitType = self._researchDuplicateSellToKeepTraitTypes and self._researchDuplicateSellToKeepTraitTypes[uniqueId]
+        local traitType = self._researchDuplicateExcessToKeepTraitTypes and self._researchDuplicateExcessToKeepTraitTypes[uniqueId]
         for _, searchBag in ipairs({ BAG_BACKPACK, BAG_BANK }) do
             local searchBagSize = GetBagSize and GetBagSize(searchBag) or 0
             for searchSlot = 0, searchBagSize - 1 do
@@ -363,7 +399,9 @@ function MiniMap:UpdateResearchDuplicateSlotOverlay(slotControl, slotData)
     local overlay = slotControl._researchDuplicateOverlay
     local keepLabel = slotControl._researchDuplicateKeepLabel
     local bagId, slotIndex = GetSlotBagAndIndex(slotControl, slotData)
-    local isCompanionSell, companionTraitType, companionArmorType = IsCompanionArmorWithBadTrait(bagId, slotIndex)
+    local hasCompanionBadTrait, companionTraitType, companionArmorType = IsCompanionArmorWithBadTrait(bagId, slotIndex)
+    local hasPlayerBadTrait, playerTraitType = IsPlayerArmorWithBadTrait(bagId, slotIndex)
+    local isBadArmor = hasCompanionBadTrait or hasPlayerBadTrait
 
     if not researchIndicator then
         local anchorTarget = slotControl:GetNamedChild("Icon")
@@ -396,8 +434,8 @@ function MiniMap:UpdateResearchDuplicateSlotOverlay(slotControl, slotData)
         overlay:SetAnchor(CENTER, anchorTarget, CENTER, 0, 0)
         overlay:SetDrawLevel(50)
 
-        local researchSellFallback = bagId ~= nil and slotIndex ~= nil and self:IsResearchDuplicateSellSlot(bagId, slotIndex)
-        local shouldShowFallback = researchSellFallback or isCompanionSell
+        local researchExcessFallback = bagId ~= nil and slotIndex ~= nil and self:IsResearchDuplicateExcessSlot(bagId, slotIndex)
+        local shouldShowFallback = researchExcessFallback or isBadArmor
         overlay:SetHidden(not shouldShowFallback)
 
         if shouldShowFallback then
@@ -409,9 +447,14 @@ function MiniMap:UpdateResearchDuplicateSlotOverlay(slotControl, slotData)
                 keepLabel:SetAnchor(TOPLEFT, slotControl, TOPLEFT, 60, -8)
             end
 
-            if isCompanionSell then
+            if hasCompanionBadTrait then
                 local traitName = Locale.GetTraitName(companionTraitType)
-                keepLabel:SetText(self:Text("companionSell"):format(traitName))
+                keepLabel:SetText(self:Text("badTraitArmor"):format(traitName))
+                keepLabel:SetColor(1, 0.1, 0.1, 1)
+                keepLabel:SetHidden(false)
+            elseif hasPlayerBadTrait then
+                local traitName = Locale.GetTraitName(playerTraitType)
+                keepLabel:SetText(self:Text("badTraitArmor"):format(traitName))
                 keepLabel:SetColor(1, 0.1, 0.1, 1)
                 keepLabel:SetHidden(false)
             else
@@ -452,8 +495,8 @@ function MiniMap:UpdateResearchDuplicateSlotOverlay(slotControl, slotData)
         slotControl._researchDuplicateKeepLabel = keepLabel
     end
 
-    local researchSell = bagId ~= nil and slotIndex ~= nil and self:IsResearchDuplicateSellSlot(bagId, slotIndex)
-    local shouldShow = researchSell or isCompanionSell
+    local researchExcess = bagId ~= nil and slotIndex ~= nil and self:IsResearchDuplicateExcessSlot(bagId, slotIndex)
+    local shouldShow = researchExcess or isBadArmor
     if shouldShow and researchIndicator.IsHidden and researchIndicator:IsHidden() then
         shouldShow = false
     end
@@ -469,9 +512,14 @@ function MiniMap:UpdateResearchDuplicateSlotOverlay(slotControl, slotData)
             keepLabel:SetAnchor(TOPLEFT, slotControl, TOPLEFT, 60, -8)
         end
 
-        if isCompanionSell then
+        if hasCompanionBadTrait then
             local traitName = Locale.GetTraitName(companionTraitType)
-            keepLabel:SetText(self:Text("companionSell"):format(traitName))
+            keepLabel:SetText(self:Text("badTraitArmor"):format(traitName))
+            keepLabel:SetColor(1, 0.1, 0.1, 1)
+            keepLabel:SetHidden(false)
+        elseif hasPlayerBadTrait then
+            local traitName = Locale.GetTraitName(playerTraitType)
+            keepLabel:SetText(self:Text("badTraitArmor"):format(traitName))
             keepLabel:SetColor(1, 0.1, 0.1, 1)
             keepLabel:SetHidden(false)
         else
@@ -491,8 +539,8 @@ end
 
 function MiniMap:ApplyResearchDuplicateKeepLabelColor(keepLabel, bagId, slotIndex)
     local uniqueId = GetItemUniqueId(bagId, slotIndex)
-    if uniqueId and self._researchDuplicateSellToKeepQualities then
-        local quality = self._researchDuplicateSellToKeepQualities[uniqueId]
+    if uniqueId and self._researchDuplicateExcessToKeepQualities then
+        local quality = self._researchDuplicateExcessToKeepQualities[uniqueId]
         if quality then
             local color = GetItemQualityColor(quality)
             keepLabel:SetColor(color.r, color.g, color.b, color.a)
@@ -567,6 +615,6 @@ function MiniMap:ShowResearchDupes()
             local fallbackName = (data.name and data.name ~= "") and data.name or "Unknown item"
             junkStr = string.format("%s x%d", fallbackName, dupeCount)
         end
-        Print(string.format(self:Text("researchCanSellLine"), junkStr, keepStr))
+        Print(string.format(self:Text("researchCanExcessLine"), junkStr, keepStr))
     end
 end

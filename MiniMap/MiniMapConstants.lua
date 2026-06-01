@@ -163,6 +163,13 @@ COMPANION_DAMAGE_TRAITS = {
     [ITEM_TRAIT_TYPE_ARMOR_PROLIFIC] = true,
 }
 
+-- PC armor trait categories
+PC_TANKING_TRAITS = {
+    [ITEM_TRAIT_TYPE_ARMOR_STURDY] = true,
+    [ITEM_TRAIT_TYPE_ARMOR_REINFORCED] = true,
+    [ITEM_TRAIT_TYPE_ARMOR_NIRNHONED] = true,
+}
+
 -- Resource node loot type identifiers (from EVENT_LOOT_RECEIVED soundCategory)
 MINIMAP_LOOT_TYPE_RUNE = 15
 MINIMAP_LOOT_TYPE_WATER = 19
