@@ -403,6 +403,18 @@ function MiniMap:UpdateResearchDuplicateSlotOverlay(slotControl, slotData)
     local hasPlayerBadTrait, playerTraitType = IsPlayerArmorWithBadTrait(bagId, slotIndex)
     local isBadArmor = hasCompanionBadTrait or hasPlayerBadTrait
 
+    if bagId ~= nil and slotIndex ~= nil and isBadArmor then
+        local link = GetItemLink(bagId, slotIndex)
+        if link and link ~= "" and IsResearchDuplicateItemType(link) then
+            local researchExcess = self:IsResearchDuplicateExcessSlot(bagId, slotIndex)
+            if not researchExcess then
+                hasCompanionBadTrait = false
+                hasPlayerBadTrait = false
+                isBadArmor = false
+            end
+        end
+    end
+
     if not researchIndicator then
         local anchorTarget = slotControl:GetNamedChild("Icon")
         if not anchorTarget then
@@ -435,7 +447,9 @@ function MiniMap:UpdateResearchDuplicateSlotOverlay(slotControl, slotData)
         overlay:SetDrawLevel(50)
 
         local researchExcessFallback = bagId ~= nil and slotIndex ~= nil and self:IsResearchDuplicateExcessSlot(bagId, slotIndex)
-        local shouldShowFallback = researchExcessFallback or isBadArmor
+        local showDuplicates = self.saved.researchShowDuplicates ~= false
+        local showBadTrait = self.saved.researchShowBadTrait ~= false
+        local shouldShowFallback = (researchExcessFallback and showDuplicates) or (isBadArmor and showBadTrait)
         overlay:SetHidden(not shouldShowFallback)
 
         if shouldShowFallback then
@@ -447,17 +461,7 @@ function MiniMap:UpdateResearchDuplicateSlotOverlay(slotControl, slotData)
                 keepLabel:SetAnchor(TOPLEFT, slotControl, TOPLEFT, 60, -8)
             end
 
-            if hasCompanionBadTrait then
-                local traitName = Locale.GetTraitName(companionTraitType)
-                keepLabel:SetText(self:Text("badTraitArmor"):format(traitName))
-                keepLabel:SetColor(1, 0.1, 0.1, 1)
-                keepLabel:SetHidden(false)
-            elseif hasPlayerBadTrait then
-                local traitName = Locale.GetTraitName(playerTraitType)
-                keepLabel:SetText(self:Text("badTraitArmor"):format(traitName))
-                keepLabel:SetColor(1, 0.1, 0.1, 1)
-                keepLabel:SetHidden(false)
-            else
+            if researchExcessFallback and showDuplicates then
                 local keepName = self:GetResearchDuplicateKeepItemName(bagId, slotIndex)
                 if keepName then
                     keepLabel:SetText(keepName)
@@ -466,6 +470,18 @@ function MiniMap:UpdateResearchDuplicateSlotOverlay(slotControl, slotData)
                 else
                     keepLabel:SetHidden(true)
                 end
+            elseif hasCompanionBadTrait and showBadTrait then
+                local traitName = Locale.GetTraitName(companionTraitType)
+                keepLabel:SetText(self:Text("badTraitArmor"):format(traitName))
+                keepLabel:SetColor(1, 0.1, 0.1, 1)
+                keepLabel:SetHidden(false)
+            elseif hasPlayerBadTrait and showBadTrait then
+                local traitName = Locale.GetTraitName(playerTraitType)
+                keepLabel:SetText(self:Text("badTraitArmor"):format(traitName))
+                keepLabel:SetColor(1, 0.1, 0.1, 1)
+                keepLabel:SetHidden(false)
+            else
+                keepLabel:SetHidden(true)
             end
         else
             keepLabel:SetHidden(true)
@@ -496,7 +512,9 @@ function MiniMap:UpdateResearchDuplicateSlotOverlay(slotControl, slotData)
     end
 
     local researchExcess = bagId ~= nil and slotIndex ~= nil and self:IsResearchDuplicateExcessSlot(bagId, slotIndex)
-    local shouldShow = researchExcess or isBadArmor
+    local showDuplicates = self.saved.researchShowDuplicates ~= false
+    local showBadTrait = self.saved.researchShowBadTrait ~= false
+    local shouldShow = (researchExcess and showDuplicates) or (isBadArmor and showBadTrait)
     if shouldShow and researchIndicator.IsHidden and researchIndicator:IsHidden() then
         shouldShow = false
     end
@@ -512,17 +530,7 @@ function MiniMap:UpdateResearchDuplicateSlotOverlay(slotControl, slotData)
             keepLabel:SetAnchor(TOPLEFT, slotControl, TOPLEFT, 60, -8)
         end
 
-        if hasCompanionBadTrait then
-            local traitName = Locale.GetTraitName(companionTraitType)
-            keepLabel:SetText(self:Text("badTraitArmor"):format(traitName))
-            keepLabel:SetColor(1, 0.1, 0.1, 1)
-            keepLabel:SetHidden(false)
-        elseif hasPlayerBadTrait then
-            local traitName = Locale.GetTraitName(playerTraitType)
-            keepLabel:SetText(self:Text("badTraitArmor"):format(traitName))
-            keepLabel:SetColor(1, 0.1, 0.1, 1)
-            keepLabel:SetHidden(false)
-        else
+        if researchExcess and showDuplicates then
             local keepName = self:GetResearchDuplicateKeepItemName(bagId, slotIndex)
             if keepName then
                 keepLabel:SetText(keepName)
@@ -531,6 +539,18 @@ function MiniMap:UpdateResearchDuplicateSlotOverlay(slotControl, slotData)
             else
                 keepLabel:SetHidden(true)
             end
+        elseif hasCompanionBadTrait and showBadTrait then
+            local traitName = Locale.GetTraitName(companionTraitType)
+            keepLabel:SetText(self:Text("badTraitArmor"):format(traitName))
+            keepLabel:SetColor(1, 0.1, 0.1, 1)
+            keepLabel:SetHidden(false)
+        elseif hasPlayerBadTrait and showBadTrait then
+            local traitName = Locale.GetTraitName(playerTraitType)
+            keepLabel:SetText(self:Text("badTraitArmor"):format(traitName))
+            keepLabel:SetColor(1, 0.1, 0.1, 1)
+            keepLabel:SetHidden(false)
+        else
+            keepLabel:SetHidden(true)
         end
     else
         keepLabel:SetHidden(true)

@@ -282,6 +282,34 @@ function MiniMap:RegisterSettingsMenu()
             default = DEFAULTS.researchIncludeLegendary,
             width = 'full',
         },
+        {
+            type = 'checkbox',
+            name = self:Text('researchShowDuplicatesName'),
+            tooltip = self:Text('researchShowDuplicatesTooltip'),
+            getFunc = function()
+                return self.saved.researchShowDuplicates ~= false
+            end,
+            setFunc = function(value)
+                self.saved.researchShowDuplicates = value
+                self:RefreshResearchDuplicateOverlays()
+            end,
+            default = DEFAULTS.researchShowDuplicates,
+            width = 'full',
+        },
+        {
+            type = 'checkbox',
+            name = self:Text('researchShowBadTraitName'),
+            tooltip = self:Text('researchShowBadTraitTooltip'),
+            getFunc = function()
+                return self.saved.researchShowBadTrait ~= false
+            end,
+            setFunc = function(value)
+                self.saved.researchShowBadTrait = value
+                self:RefreshResearchDuplicateOverlays()
+            end,
+            default = DEFAULTS.researchShowBadTrait,
+            width = 'full',
+        },
     }
 
     LAM:RegisterAddonPanel('MiniMapSettings', panelData)

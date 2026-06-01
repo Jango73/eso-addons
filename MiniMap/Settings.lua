@@ -14,6 +14,8 @@ DEFAULTS = {
     researchIncludeSuperior = true,
     researchIncludeEpic = false,
     researchIncludeLegendary = false,
+    researchShowDuplicates = true,
+    researchShowBadTrait = true,
     autoActivateQuest = false,
     respawnTime = 600,
 }
