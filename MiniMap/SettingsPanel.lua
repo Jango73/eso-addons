@@ -28,25 +28,6 @@ function MiniMap:RegisterSettingsMenu()
 
     local optionsTable = {
         {
-            type = 'header',
-            name = self:Text('helpHeader'),
-            width = 'full',
-        },
-        {
-            type = 'description',
-            text = self:Text('helpOverview') .. "\n\n"
-                .. self:Text('helpResources') .. "\n\n"
-                .. self:Text('helpRoutes') .. "\n\n"
-                .. self:Text('helpNotes') .. "\n\n"
-                .. self:Text('helpResearchSort') .. "\n\n"
-                .. self:Text('helpCommandsTitle') .. "\n"
-                .. self:Text('helpSettings') .. "\n"
-                .. self:Text('helpVisibility') .. "\n"
-                .. self:Text('helpRoute') .. "\n"
-                .. self:Text('helpResearch'),
-            width = 'full',
-        },
-        {
             type = 'dropdown',
             name = self:Text('orientationName'),
             tooltip = self:Text('orientationTooltip'),
@@ -324,6 +305,25 @@ function MiniMap:RegisterSettingsMenu()
                 self:RefreshResearchDuplicateOverlays()
             end,
             default = DEFAULTS.researchShowBadTrait,
+            width = 'full',
+        },
+        {
+            type = 'header',
+            name = self:Text('helpHeader'),
+            width = 'full',
+        },
+        {
+            type = 'description',
+            text = self:Text('helpOverview') .. "\n\n"
+                .. self:Text('helpResources') .. "\n\n"
+                .. self:Text('helpRoutes') .. "\n\n"
+                .. self:Text('helpNotes') .. "\n\n"
+                .. self:Text('helpResearchSort') .. "\n\n"
+                .. self:Text('helpCommandsTitle') .. "\n"
+                .. self:Text('helpSettings') .. "\n"
+                .. self:Text('helpVisibility') .. "\n"
+                .. self:Text('helpRoute') .. "\n"
+                .. self:Text('helpResearch'),
             width = 'full',
         },
     }

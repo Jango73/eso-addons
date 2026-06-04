@@ -8,7 +8,7 @@
 
 ## Fixes
 
-- [ ] Move Help text AFTER settings
+- [x] Move Help text AFTER settings
 
 ## Bugs
 
