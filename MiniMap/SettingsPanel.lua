@@ -224,15 +224,28 @@ function MiniMap:RegisterSettingsMenu()
         },
         {
             type = 'checkbox',
-            name = self:Text('autoActivateQuestName'),
-            tooltip = self:Text('autoActivateQuestTooltip'),
+            name = self:Text('autoActivateQuestOnCompleteName'),
+            tooltip = self:Text('autoActivateQuestOnCompleteTooltip'),
             getFunc = function()
-                return self.saved.autoActivateQuest
+                return self.saved.autoActivateQuestOnComplete
             end,
             setFunc = function(value)
-                self.saved.autoActivateQuest = value
+                self.saved.autoActivateQuestOnComplete = value
             end,
-            default = DEFAULTS.autoActivateQuest,
+            default = DEFAULTS.autoActivateQuestOnComplete,
+            width = 'full',
+        },
+        {
+            type = 'checkbox',
+            name = self:Text('autoActivateQuestOnNewName'),
+            tooltip = self:Text('autoActivateQuestOnNewTooltip'),
+            getFunc = function()
+                return self.saved.autoActivateQuestOnNew
+            end,
+            setFunc = function(value)
+                self.saved.autoActivateQuestOnNew = value
+            end,
+            default = DEFAULTS.autoActivateQuestOnNew,
             width = 'full',
         },
         {

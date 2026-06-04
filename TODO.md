@@ -3,7 +3,7 @@
 
 ## Features
 
-- [ ] Settings for "auto activate closest quest" should be seperate for "new quest" and "quest completed".
+- [x] Settings for "auto activate closest quest" should be seperate for "new quest" and "quest completed".
 - [ ] Allow attaching a text note to a specific map spot (e.g., "guarded by mob", "hidden path").
 
 ## Fixes

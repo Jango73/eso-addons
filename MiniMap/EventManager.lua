@@ -163,13 +163,23 @@ function MiniMap:Initialize()
     end)
 
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_QUEST_COMPLETE", EVENT_QUEST_COMPLETE, function(eventCode, questName, level, prevExp, curExp, rank, prevPoints, curPoints)
-        if not MiniMap.saved.autoActivateQuest then
+        if not MiniMap.saved.autoActivateQuestOnComplete then
             return
         end
 
         zo_callLater(function()
             MiniMap:ActivateClosestQuest()
         end, 2000)
+    end)
+
+    EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_QUEST_ADDED", EVENT_QUEST_ADDED, function()
+        if not MiniMap.saved.autoActivateQuestOnNew then
+            return
+        end
+
+        zo_callLater(function()
+            MiniMap:ActivateClosestQuest()
+        end, 500)
     end)
 end
 
