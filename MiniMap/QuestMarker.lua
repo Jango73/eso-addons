@@ -1,5 +1,11 @@
 QuestMarker = {}
 
+---Create a new QuestMarker instance.
+---@param id string Unique marker identifier.
+---@param definition table Marker visual definition from MARKER_DEFINITIONS.
+---@param provider function|nil Callback returning (targetX, targetY).
+---@param root table Parent UI control.
+---@return table The new QuestMarker instance.
 function QuestMarker:New(id, definition, provider, root)
     local obj = {
         id = id,
@@ -19,6 +25,12 @@ function QuestMarker:New(id, definition, provider, root)
     return obj
 end
 
+---Create a single UI control (texture or backdrop) with the given colour.
+---@param controlName string Control name.
+---@param controlType number CT_TEXTURE or CT_BACKDROP.
+---@param texture string|nil Texture path (for CT_TEXTURE).
+---@param color table|nil RGBA colour array.
+---@return table The created control.
 function QuestMarker:CreateControl(controlName, controlType, texture, color)
     local control = WINDOW_MANAGER:CreateControl(controlName, self.root, controlType)
     control:SetDrawLayer(DL_OVERLAY)
@@ -42,6 +54,7 @@ function QuestMarker:CreateControl(controlName, controlType, texture, color)
     return control
 end
 
+---Create the edge and/or inside controls based on the marker definition.
 function QuestMarker:CreateControls()
     local def = self.definition
     local baseName = "MiniMapMarker" .. self.id
@@ -57,6 +70,13 @@ function QuestMarker:CreateControls()
     end
 end
 
+---Position a control at the minimap edge, rotated to point toward the target.
+---@param control table The edge control.
+---@param center number Minimap centre in pixels.
+---@param radius number Minimap radius in pixels.
+---@param dx number X offset from centre (world → local, unrotated).
+---@param dy number Y offset from centre (world → local, unrotated).
+---@param markerSize number Edge marker size in pixels.
 function QuestMarker:PositionAtEdge(control, center, radius, dx, dy, markerSize)
     local length = math.sqrt((dx * dx) + (dy * dy))
     if length <= MINIMAP_EPSILON then
@@ -79,6 +99,11 @@ function QuestMarker:PositionAtEdge(control, center, radius, dx, dy, markerSize)
     control:SetHidden(false)
 end
 
+---Place an inside-marker control at the given local pixel coordinates.
+---@param control table The inside control.
+---@param localX number Pixel X on the minimap.
+---@param localY number Pixel Y on the minimap.
+---@param size number Marker size in pixels.
 function QuestMarker:UpdateMarkerControl(control, localX, localY, size)
     control:ClearAnchors()
     control:SetAnchor(CENTER, self.root, TOPLEFT, localX, localY)
@@ -86,6 +111,13 @@ function QuestMarker:UpdateMarkerControl(control, localX, localY, size)
     control:SetHidden(false)
 end
 
+---Decide whether to show the edge indicator or the inside marker based on distance from centre.
+---@param localX number Pixel X on the minimap.
+---@param localY number Pixel Y on the minimap.
+---@param distFromCenter number Distance from minimap centre in pixels.
+---@param center number Minimap centre in pixels.
+---@param radius number Minimap radius in pixels.
+---@param margin number Edge margin in pixels.
 function QuestMarker:UpdatePosition(localX, localY, distFromCenter, center, radius, margin)
     local def = self.definition
 
@@ -110,20 +142,34 @@ function QuestMarker:UpdatePosition(localX, localY, distFromCenter, center, radi
     end
 end
 
+---Override this marker's target with a shortcut position (e.g. wayshrine).
+---@param x number World X.
+---@param y number World Y.
 function QuestMarker:SetShortcut(x, y)
     self.shortcutX = x
     self.shortcutY = y
 end
 
+---Remove any previously-set shortcut override.
 function QuestMarker:ClearShortcut()
     self.shortcutX = nil
     self.shortcutY = nil
 end
 
+---Check whether this marker has a shortcut override set.
+---@return boolean True if a shortcut is active.
 function QuestMarker:HasShortcut()
     return self.shortcutX ~= nil
 end
 
+---Update marker position by querying the provider (or using the shortcut override).
+---@param playerX number Player world X.
+---@param playerY number Player world Y.
+---@param mapRotation number Map rotation in radians.
+---@param center number Minimap centre in pixels.
+---@param radius number Minimap radius in pixels.
+---@param margin number Edge margin in pixels.
+---@param mapSize number Map texture size in pixels.
 function QuestMarker:Update(playerX, playerY, mapRotation, center, radius, margin, mapSize)
     if self.provider then
         local targetX, targetY
@@ -150,6 +196,16 @@ function QuestMarker:Update(playerX, playerY, mapRotation, center, radius, margi
     end
 end
 
+---Update marker position directly from explicit target coordinates.
+---@param targetX number Target world X.
+---@param targetY number Target world Y.
+---@param playerX number Player world X.
+---@param playerY number Player world Y.
+---@param mapRotation number Map rotation in radians.
+---@param center number Minimap centre in pixels.
+---@param radius number Minimap radius in pixels.
+---@param margin number Edge margin in pixels.
+---@param mapSize number Map texture size in pixels.
 function QuestMarker:UpdateWithCoords(targetX, targetY, playerX, playerY, mapRotation, center, radius, margin, mapSize)
     if targetX and targetY then
         if not self.edgeControl then
@@ -167,6 +223,8 @@ function QuestMarker:UpdateWithCoords(targetX, targetY, playerX, playerY, mapRot
     end
 end
 
+---Recalculate marker sizes based on the minimap size.
+---@param size number Minimap size in pixels.
 function QuestMarker:ApplyLayout(size)
     self.markerSize = MiniMapRenderUtils.Clamp(math.floor(size * MINIMAP_SIZE_FACTOR_EDGE_INDICATOR), 18, 32)
     self.insideMarkerSize = MiniMapRenderUtils.Clamp(math.floor(size * MINIMAP_SIZE_FACTOR_INSIDE_MARKER), 6, 12)
@@ -180,6 +238,7 @@ function QuestMarker:ApplyLayout(size)
     end
 end
 
+---Hide both the edge and inside controls.
 function QuestMarker:Hide()
     if self.edgeControl then
         self.edgeControl:SetHidden(true)

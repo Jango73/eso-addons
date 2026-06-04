@@ -2,6 +2,9 @@ RouteRenderer = {}
 
 local ROUTE_SEGMENT_MAX = 200
 
+---Initialise the route renderer with its owner and route manager.
+---@param owner table The owning MiniMap object.
+---@param routeManager table The RouteManager instance.
 function RouteRenderer:Init(owner, routeManager)
     self.owner = owner
     self.routeManager = routeManager
@@ -9,6 +12,7 @@ function RouteRenderer:Init(owner, routeManager)
     self.initialized = false
 end
 
+---Lazily create the pool of line-segment texture controls (up to ROUTE_SEGMENT_MAX).
 function RouteRenderer:EnsureInitialized()
     if self.initialized then
         return
@@ -26,6 +30,7 @@ function RouteRenderer:EnsureInitialized()
     self.initialized = true
 end
 
+---Hide all route segment controls.
 function RouteRenderer:HideAll()
     if not self.initialized then
         return
@@ -38,6 +43,13 @@ function RouteRenderer:HideAll()
     end
 end
 
+---Render all route line segments on the minimap, recalculating if needed.
+---@param playerX number Player world X.
+---@param playerY number Player world Y.
+---@param mapRotation number Map rotation in radians.
+---@param center number Minimap centre in pixels.
+---@param radius number Minimap radius in pixels.
+---@param currentMapKey string Current map identifier.
 function RouteRenderer:Update(playerX, playerY, mapRotation, center, radius, currentMapKey)
     self:EnsureInitialized()
 
@@ -92,6 +104,11 @@ function RouteRenderer:Update(playerX, playerY, mapRotation, center, radius, cur
     end
 end
 
+---Find the closest point on any route segment to the player (for edge indicator routing).
+---@param playerX number Player world X.
+---@param playerY number Player world Y.
+---@return number|nil x Nearest point X on the route.
+---@return number|nil y Nearest point Y on the route.
 function RouteRenderer:GetNearestRoutePoint(playerX, playerY)
     if not playerX or not playerY then
         return nil

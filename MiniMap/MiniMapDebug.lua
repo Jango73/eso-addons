@@ -1,5 +1,7 @@
 MiniMapDebug = {}
 
+---Print a debug message if DEBUG_ENABLED is set.
+---@param message string The message to log.
 function Debug(message)
     if not DEBUG_ENABLED then
         return
@@ -11,6 +13,10 @@ function Debug(message)
     end
 end
 
+---Print a coalesced debug message, throttling repeated logs to every 25th occurrence.
+---First occurrences at count 1, 2, 5, then every 25th are shown.
+---@param key string Unique key to track the message group.
+---@param message string The message to log.
 function DebugCoalesced(key, message)
     if not DEBUG_ENABLED then
         return

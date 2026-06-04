@@ -7,6 +7,8 @@ local COMPASS_MARKERS = {
     MINIMAP_COMPASS_E,
 }
 
+---Initialize the indicator renderer: store owner, clear marker tables, register compass markers.
+---@param owner table The owning MiniMap object.
 function IndicatorRenderer:Init(owner)
     self.owner = owner
     self.questMarkers = {}
@@ -25,12 +27,28 @@ function IndicatorRenderer:Init(owner)
     end
 end
 
+---Create and register a new quest edge marker.
+---@param id string Unique marker identifier.
+---@param definition table Marker visual definition.
+---@param provider table Provider object for quest data.
+---@return table The created QuestMarker.
 function IndicatorRenderer:AddQuestMarker(id, definition, provider)
     local marker = QuestMarker:New(id, definition, provider, self.owner.root)
     table.insert(self.questMarkers, marker)
     return marker
 end
 
+---Ensure objective markers match the objective list, updating or hiding as needed.
+---@param objectives table|nil List of objectives with x,y fields.
+---@param playerX number Player world X.
+---@param playerY number Player world Y.
+---@param mapRotation number Current map rotation in radians.
+---@param center number Center of the minimap in pixels.
+---@param radius number Minimap radius in pixels.
+---@param margin number Edge margin in pixels.
+---@param mapSize number Map texture size in pixels.
+---@param shortcutX number|nil Shortcut destination X override.
+---@param shortcutY number|nil Shortcut destination Y override.
 function IndicatorRenderer:ReconcileQuestObjectives(objectives, playerX, playerY, mapRotation, center, radius, margin, mapSize, shortcutX, shortcutY)
     if not objectives then
         for _, marker in ipairs(self.objectiveMarkers) do
@@ -61,6 +79,8 @@ function IndicatorRenderer:ReconcileQuestObjectives(objectives, playerX, playerY
     end
 end
 
+---Reapply layout to all quest, objective, and compass edge markers.
+---@param size number Current minimap size in pixels.
 function IndicatorRenderer:ApplyLayout(size)
     self.compassSize = MiniMapRenderUtils.Clamp(math.floor(size * 0.12), 12, 20)
 
@@ -80,6 +100,9 @@ function IndicatorRenderer:ApplyLayout(size)
     end
 end
 
+---Create a UI label control for a compass direction edge marker.
+---@param marker table Compass marker data.
+---@param id string Compass marker identifier.
 function IndicatorRenderer:CreateCompassControl(marker, id)
     local def = marker.definition
     local control = WINDOW_MANAGER:CreateControl("MiniMapCompass" .. def.compassDirection, self.owner.root, CT_LABEL)
@@ -92,6 +115,12 @@ function IndicatorRenderer:CreateCompassControl(marker, id)
     marker.edgeControl = control
 end
 
+---Position a compass direction label at the correct edge of the minimap, accounting for map rotation.
+---@param marker table Compass marker data with edgeControl.
+---@param center number Center of minimap in pixels.
+---@param radius number Minimap radius in pixels.
+---@param direction string Compass direction ("N", "S", "W", "E").
+---@param mapRotation number Map rotation in radians.
 function IndicatorRenderer:PositionCompassMarker(marker, center, radius, direction, mapRotation)
     local offset = radius - (self.compassSize * 0.7)
     local x, y
@@ -119,6 +148,17 @@ function IndicatorRenderer:PositionCompassMarker(marker, center, radius, directi
     marker.edgeControl:SetHidden(false)
 end
 
+---Update all edge indicators: quest markers, objective markers, and compass labels.
+---@param playerX number Player world X.
+---@param playerY number Player world Y.
+---@param mapRotation number Map rotation in radians.
+---@param center number Minimap center in pixels.
+---@param radius number Minimap radius in pixels.
+---@param margin number Edge indicator margin in pixels.
+---@param mapSize number Map texture size in pixels.
+---@param objectives table|nil List of quest objective positions.
+---@param shortcutX number|nil Wayshrine shortcut destination X.
+---@param shortcutY number|nil Wayshrine shortcut destination Y.
 function IndicatorRenderer:Update(playerX, playerY, mapRotation, center, radius, margin, mapSize, objectives, shortcutX, shortcutY)
     for _, marker in ipairs(self.questMarkers) do
         marker:Update(playerX, playerY, mapRotation, center, radius, margin, mapSize or self.owner.mapSize)

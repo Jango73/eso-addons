@@ -1,10 +1,14 @@
 
+---Print a formatted MiniMap debug message.
+---@param message string The message to print.
 local function Print(message)
     if d then
         d("|c80d0ffMiniMap|r " .. message)
     end
 end
 
+---Initialize the minimap: load saved variables, set up spots/notes/route managers,
+---create UI controls, apply layout, register events and settings menu.
 function MiniMap:Initialize()
     ZO_CreateStringId("SI_BINDING_NAME_MINIMAP_CLOSEST_QUEST", "Activate Closest Quest")
     self.saved = ZO_SavedVars:NewAccountWide("MiniMapSavedVariables", 1, nil, DEFAULTS)
@@ -36,6 +40,7 @@ function MiniMap:Initialize()
 
     local updateCounter = 0
     local lastMapOpen = false
+    ---Periodic update callback: refresh map, player, quest indicators, and toolbar visibility.
     local function OnMinimapUpdate()
         if MiniMap.refreshRateDirty then
             MiniMap.refreshRateDirty = false
@@ -81,6 +86,7 @@ function MiniMap:Initialize()
 
     EVENT_MANAGER:RegisterForUpdate(ADDON_NAME .. "Update", self.saved.refreshRate or MINIMAP_REFRESH_MS, OnMinimapUpdate)
 
+    ---Refresh the map to the player's current location, with a delayed follow-up.
     local function RefreshMapAfterLocationChange()
         MiniMap:RefreshMapToPlayerLocation(true)
         if zo_callLater then
@@ -167,6 +173,7 @@ function MiniMap:Initialize()
     end)
 end
 
+---Wire up note editor UI button handlers (add, close, prev, next, delete, item list).
 local function SetupNoteEvents()
     if not MiniMap.noteRenderer then
         return
@@ -233,6 +240,9 @@ local function SetupNoteEvents()
     end
 end
 
+---Entry point when the add-on is loaded: run initialization and note event setup.
+---@param _ any Unused event code.
+---@param addonName string The name of the loaded add-on.
 local function OnAddOnLoaded(_, addonName)
     if addonName ~= ADDON_NAME then
         return

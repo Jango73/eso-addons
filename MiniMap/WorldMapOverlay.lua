@@ -4,12 +4,14 @@ local WORLD_MAP_OVERLAY_PIN_TYPE = "MiniMapQuestShrine"
 local WORLD_MAP_OVERLAY_RING_COLOR = { 1, 1, 1, 1 }
 local WORLD_MAP_OVERLAY_RING_SIZE = 40
 
+---Initialise the world map overlay.
 function WorldMapOverlay:Init()
     self.pinCreated = false
     self.currentWayshrineX = nil
     self.currentWayshrineY = nil
 end
 
+---Register the custom wayshrine ring pin type with the world map system.
 function WorldMapOverlay:AddCustomPin()
     if self.pinCreated then
         return
@@ -27,6 +29,8 @@ function WorldMapOverlay:AddCustomPin()
         ),
     }
 
+    ---Callback invoked by the world map pin manager to create/update the wayshrine ring pin.
+    ---@param pinManager table The world map pin manager.
     local function PinCallback(pinManager)
         if self.currentWayshrineX and self.currentWayshrineY then
             pinManager:RemovePins(WORLD_MAP_OVERLAY_PIN_TYPE)
@@ -40,6 +44,9 @@ function WorldMapOverlay:AddCustomPin()
     self.pinCreated = true
 end
 
+---Update the overlay pin position on the world map.
+---@param wayshrineX number Wayshrine world X.
+---@param wayshrineY number Wayshrine world Y.
 function WorldMapOverlay:Update(wayshrineX, wayshrineY)
     if not ZO_WorldMap_GetPinManager then
         return
@@ -55,6 +62,7 @@ function WorldMapOverlay:Update(wayshrineX, wayshrineY)
     ZO_WorldMap_RefreshCustomPinsOfType(_G[WORLD_MAP_OVERLAY_PIN_TYPE])
 end
 
+---Remove the overlay pin from the world map.
 function WorldMapOverlay:Hide()
     self.currentWayshrineX = nil
     self.currentWayshrineY = nil

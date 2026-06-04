@@ -11,6 +11,9 @@
 -- this object, e.g.: savedVars["data"] = {}. See SpotDatabase:Init for the pattern.
 -- ==============================================================================
 
+---Convert a normalised UI slider value (0-1) into an actual zoom level.
+---@param t number Normalised zoom in [0, 1].
+---@return number Effective zoom level.
 local function ZoomFromUI(t)
     return MINIMAP_ZOOM_MIN * (MINIMAP_ZOOM_MAX / MINIMAP_ZOOM_MIN) ^ t
 end
@@ -31,25 +34,37 @@ MiniMap = {
     nearestQuestDestY = nil,
 }
 
+---Print a message to the chat frame.
+---@param message string The message text to display.
 local function Echo(message)
     if CHAT_SYSTEM then
         CHAT_SYSTEM:AddMessage(message)
     end
 end
 
+---Show an alert that a resource spot was added.
+---@param category string The resource category name.
 local function PrintSpotAdded(category)
     ZO_AlertNoSuppression(UI_ALERT_CATEGORY_ALERT, nil, Locale.GetString("spotAdded"):format(category))
 end
 
+---Show an alert that resource spots were deleted.
+---@param count number Number of spots removed.
 local function PrintSpotDeleted(count)
     ZO_AlertNoSuppression(UI_ALERT_CATEGORY_ALERT, nil, Locale.GetString("spotsDeleted"):format(count))
 end
 
+---Get the player's current map-normalised position.
+---@return number|nil x Normalised X coordinate.
+---@return number|nil y Normalised Y coordinate.
 local function GetPlayerMapPosition()
     local x, y, _ = GetMapPlayerPosition("player")
     return x, y
 end
 
+---Add a resource spot at the player's current position.
+---@param category string Resource category key.
+---@return boolean Whether the spot was added (or already existed).
 function MiniMap:AddSpotAtPlayer(category)
     local x, y = GetPlayerMapPosition()
     if not x or not y then
@@ -74,12 +89,15 @@ function MiniMap:AddSpotAtPlayer(category)
     return true
 end
 
+---Iterate over every resource category and invoke a callback.
+---@param callback function Function receiving the category definition table.
 local function ForEachCategory(callback)
     for _, cat in ipairs(RESOURCE_CATEGORIES) do
         callback(cat)
     end
 end
 
+---Create all UI controls: minimap window, map tiles, player arrow, toolbar, zoom bar, renderers, world map overlay.
 function MiniMap:CreateControls()
     local root = WINDOW_MANAGER:CreateTopLevelWindow("MiniMapWindow")
     root:SetDrawTier(DT_HIGH)
@@ -142,6 +160,12 @@ function MiniMap:CreateControls()
     local totalWidth = (#RESOURCE_CATEGORIES + 1) * (buttonSize + buttonSpacing) - buttonSpacing
     toolbar:SetDimensions(totalWidth, buttonSize + 12)
 
+    ---Set up mouse hover tooltip behaviour for a toolbar button.
+    ---@param btn table The button control.
+    ---@param btnBg table The button background backdrop.
+    ---@param hoverColor table RGBA colour for hover state.
+    ---@param normalColor table RGBA colour for normal state.
+    ---@param tooltipText string Text to display in the tooltip.
     local function SetupButtonTooltip(btn, btnBg, hoverColor, normalColor, tooltipText)
         btn:SetHandler("OnMouseEnter", function()
             btnBg:SetCenterColor(hoverColor[1], hoverColor[2], hoverColor[3], hoverColor[4])
@@ -154,6 +178,10 @@ function MiniMap:CreateControls()
         end)
     end
 
+    ---Create a toolbar button for a resource category.
+    ---@param index number Button position index.
+    ---@param cat table Resource category definition.
+    ---@return table The created button control.
     local function CreateToolButton(index, cat)
         local btn = WINDOW_MANAGER:CreateControl("MiniMapToolbarBtn" .. cat.key, toolbar, CT_BUTTON)
         btn:SetDimensions(buttonSize, buttonSize)
@@ -185,6 +213,8 @@ function MiniMap:CreateControls()
         return btn
     end
 
+    ---Create the delete-spots button for the toolbar.
+    ---@return table The created delete button control.
     local function CreateDeleteButton()
         local btn = WINDOW_MANAGER:CreateControl("MiniMapToolbarBtnDelete", toolbar, CT_BUTTON)
         btn:SetDimensions(buttonSize, buttonSize)
@@ -280,6 +310,12 @@ function MiniMap:CreateControls()
     self.zoomBar:SetHidden(true)
     self.zoomBar:SetDimensions(zoomSize * 2 + zoomSpacing, zoomSize)
 
+    ---Create a zoom in/out button for the zoom bar.
+    ---@param name string Control name prefix.
+    ---@param text string Button label ("+" or "-").
+    ---@param anchorTo table Control to anchor from.
+    ---@param delta number Horizontal offset from anchor.
+    ---@return table The created button control.
     local function MakeZoomButton(name, text, anchorTo, delta)
         local btn = WINDOW_MANAGER:CreateControl(name, self.zoomBar, CT_BUTTON)
         btn:SetDimensions(zoomSize, zoomSize)
@@ -325,6 +361,7 @@ function MiniMap:CreateControls()
     self.worldMapOverlay:Init()
 end
 
+---Recalculate minimap size, position, zoom, and relay out all child elements.
 function MiniMap:ApplyLayout()
     local screenWidth, screenHeight = GuiRoot:GetDimensions()
     local size = math.floor(math.min(screenWidth, screenHeight) * self.saved.sizePercent / 100)
@@ -368,6 +405,7 @@ function MiniMap:ApplyLayout()
     end
 end
 
+---Apply a circular clip mask to the minimap root, if supported.
 function MiniMap:ApplyCircularClip()
     if not self.root.SetCircularClip then
         return
@@ -379,6 +417,7 @@ function MiniMap:ApplyCircularClip()
     end
 end
 
+---Position the toolbar at the bottom centre of the screen.
 function MiniMap:ApplyToolbarLayout()
     if not self.toolbar then
         return
@@ -388,6 +427,7 @@ function MiniMap:ApplyToolbarLayout()
     self.toolbar:SetAnchor(BOTTOM, GuiRoot, BOTTOM, 0, -84)
 end
 
+---Position the zoom bar above the minimap.
 function MiniMap:ApplyZoomBarLayout()
     if not self.zoomBar then
         return
@@ -398,6 +438,8 @@ function MiniMap:ApplyZoomBarLayout()
     self.zoomBar:SetAlpha(MiniMapRenderUtils.Clamp(self.saved.opacity or DEFAULTS.opacity, 20, 100) / 100)
 end
 
+---Check whether the HUD (or HUD UI) scene is currently showing.
+---@return boolean True if the HUD is visible.
 function MiniMap:IsHudShowing()
     if not SCENE_MANAGER or not SCENE_MANAGER.GetScene then
         return true
@@ -410,6 +452,8 @@ function MiniMap:IsHudShowing()
     return hudShown or huduiShown
 end
 
+---Show or hide the toolbar and zoom bar based on HUD and pointer mode state.
+---@param isHudShowing boolean|nil Override for HUD visibility (auto-detected if nil).
 function MiniMap:UpdateToolbarVisibility(isHudShowing)
     if not self.toolbar then
         return
@@ -433,10 +477,17 @@ function MiniMap:UpdateToolbarVisibility(isHudShowing)
     end
 end
 
+---Look up a localised string via the locale system.
+---@param key string The locale string key.
+---@return string The translated text.
 function MiniMap:Text(key)
     return Locale.GetString(key)
 end
 
+---Get the nearest resource spot position for a given category.
+---@param category string Resource category key.
+---@return number|nil x World X coordinate of the spot.
+---@return number|nil y World Y coordinate of the spot.
 function MiniMap:GetNearestResourceSpot(category)
     if not self.saved.showResourceIndicators then
         return nil
@@ -455,6 +506,10 @@ function MiniMap:GetNearestResourceSpot(category)
     return nil
 end
 
+---Update all map overlays: resource spots, route, and edge indicators.
+---@param playerX number Normalised player X.
+---@param playerY number Normalised player Y.
+---@param mapRotation number Map rotation in radians.
 function MiniMap:UpdateMapOverlays(playerX, playerY, mapRotation)
     local radius = self.size / 2
     local center = radius
@@ -467,6 +522,7 @@ function MiniMap:UpdateMapOverlays(playerX, playerY, mapRotation)
     self.indicatorRenderer:Update(playerX, playerY, mapRotation, center, radius, margin, self.mapSize, objectives, self.nearestQuestShortcutX, self.nearestQuestShortcutY)
 end
 
+---Position and texture all map tiles, creating or hiding controls as needed.
 function MiniMap:LayoutTiles()
     if not self.numHorizontalTiles or not self.numVerticalTiles then
         return
@@ -499,6 +555,9 @@ function MiniMap:LayoutTiles()
     end
 end
 
+---Refresh the map tiles and layout. Optionally force a full reload even if nothing changed.
+---@param force boolean If true, skip throttle and reload unconditionally.
+---@return boolean True if the map was successfully displayed.
 function MiniMap:RefreshMap(force)
     local now = GetFrameTimeMilliseconds and GetFrameTimeMilliseconds() or 0
     if not force and now < self.nextMapRefreshMs then
@@ -545,11 +604,16 @@ function MiniMap:RefreshMap(force)
     return true
 end
 
+---Check whether the world map scene is currently showing.
+---@return boolean True if the world map is open.
 function MiniMap:IsWorldMapShowing()
     local scene = SCENE_MANAGER and SCENE_MANAGER.GetScene and SCENE_MANAGER:GetScene("worldMap")
     return scene and scene:IsShowing()
 end
 
+---Set map to player location and refresh tiles.
+---@param force boolean Passed through to RefreshMap.
+---@return boolean True if refresh succeeded.
 function MiniMap:RefreshMapToPlayerLocation(force)
     if SetMapToPlayerLocation and not self:IsWorldMapShowing() then
         local result = SetMapToPlayerLocation()
@@ -561,6 +625,7 @@ function MiniMap:RefreshMapToPlayerLocation(force)
     return self:RefreshMap(force)
 end
 
+---Throttled check: refresh map only if enough time has passed since the last probe.
 function MiniMap:RefreshMapIfPlayerLocationChanged()
     if self:IsWorldMapShowing() then
         return
@@ -573,6 +638,7 @@ function MiniMap:RefreshMapIfPlayerLocationChanged()
     end
 end
 
+---Update player position, map pan, rotation, and all overlays every frame.
 function MiniMap:UpdatePlayer()
     if not self.root or self.saved.hidden then
         return
@@ -628,6 +694,7 @@ function MiniMap:UpdatePlayer()
     end
 end
 
+---Print the full help/command reference to chat.
 function MiniMap:ShowHelp()
     local helpLines = {
         "helpHeader",

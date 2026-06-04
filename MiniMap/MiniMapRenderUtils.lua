@@ -1,5 +1,10 @@
 MiniMapRenderUtils = {}
 
+---Clamp a value between a minimum and maximum.
+---@param value number The input value.
+---@param minValue number Lower bound.
+---@param maxValue number Upper bound.
+---@return number The clamped value.
 function MiniMapRenderUtils.Clamp(value, minValue, maxValue)
     if value < minValue then
         return minValue
@@ -10,6 +15,10 @@ function MiniMapRenderUtils.Clamp(value, minValue, maxValue)
     return value
 end
 
+---Get the angle (in radians) of a direction vector relative to "up" (negative Y).
+---@param dx number X component of the direction vector.
+---@param dy number Y component of the direction vector.
+---@return number Angle in radians.
 function MiniMapRenderUtils.GetRotationFromUp(dx, dy)
     if math.atan2 then
         return math.atan2(dx, dy)
@@ -18,6 +27,12 @@ function MiniMapRenderUtils.GetRotationFromUp(dx, dy)
     return math.atan(dx, dy)
 end
 
+---Rotate a 2D vector by the given angle in radians.
+---@param x number X component.
+---@param y number Y component.
+---@param radians number Rotation angle in radians.
+---@return number Rotated X component.
+---@return number Rotated Y component.
 function MiniMapRenderUtils.RotateVector(x, y, radians)
     if radians == 0 then
         return x, y
@@ -28,6 +43,8 @@ function MiniMapRenderUtils.RotateVector(x, y, radians)
     return (x * cos) - (y * sin), (x * sin) + (y * cos)
 end
 
+---Build a unique map key string from the current map ID or tile texture.
+---@return string|nil A unique key identifying the current map, or nil if unavailable.
 function MiniMapRenderUtils.GetCurrentMapKey()
     if GetCurrentMapId then
         local mapId = GetCurrentMapId()
@@ -46,6 +63,19 @@ function MiniMapRenderUtils.GetCurrentMapKey()
     return nil
 end
 
+---Convert world-normalised coordinates to local minimap pixel coordinates (with rotation).
+---@param targetX number Target world X.
+---@param targetY number Target world Y.
+---@param playerX number Player world X.
+---@param playerY number Player world Y.
+---@param mapSize number Map texture size in pixels.
+---@param mapRotation number Map rotation in radians.
+---@param center number Minimap centre in pixels.
+---@return number localX Pixel X on the minimap.
+---@return number localY Pixel Y on the minimap.
+---@return number distFromCenter Distance (px) from the minimap centre.
+---@return number dx Unrotated X offset in pixels.
+---@return number dy Unrotated Y offset in pixels.
 function MiniMapRenderUtils.WorldToLocal(targetX, targetY, playerX, playerY, mapSize, mapRotation, center)
     local dx = (targetX - playerX) * mapSize
     local dy = (targetY - playerY) * mapSize

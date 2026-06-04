@@ -1,16 +1,26 @@
 
+---Print a formatted MiniMap debug message.
+---@param message string The message to print.
 local function Print(message)
     if d then
         d("|c80d0ffMiniMap|r " .. message)
     end
 end
 
+---Print a message to the chat frame.
+---@param message string The message text to display.
 local function Echo(message)
     if CHAT_SYSTEM then
         CHAT_SYSTEM:AddMessage(message)
     end
 end
 
+---Check if a companion armour item has a mismatched trait for its armour type.
+---@param bagId number Bag identifier.
+---@param slotIndex number Slot index.
+---@return boolean isBad True if the trait does not match the armour type for a companion.
+---@return number|nil traitType The mismatched trait type.
+---@return number|nil armorType The armour type (LIGHT/MEDIUM/HEAVY).
 local function IsCompanionArmorWithBadTrait(bagId, slotIndex)
     if not bagId or not slotIndex then
         return false, nil, nil
@@ -62,6 +72,11 @@ local function IsCompanionArmorWithBadTrait(bagId, slotIndex)
     return false, nil, nil
 end
 
+---Check if a player's level 50+ armour has a tanking trait on light/medium (bad for most builds).
+---@param bagId number Bag identifier.
+---@param slotIndex number Slot index.
+---@return boolean isBad True if the trait is undesirable.
+---@return number|nil traitType The bad trait type.
 local function IsPlayerArmorWithBadTrait(bagId, slotIndex)
     if not bagId or not slotIndex then
         return false, nil
@@ -98,6 +113,9 @@ local function IsPlayerArmorWithBadTrait(bagId, slotIndex)
     return false, nil
 end
 
+---Check whether an item link is of a type that can be researched (armour/weapon/jewellery).
+---@param link string The item link.
+---@return boolean True if the item type is researchable.
 local function IsResearchDuplicateItemType(link)
     local itemType = GetItemLinkItemType(link)
     local equipType = GetItemLinkEquipType(link)
@@ -115,6 +133,10 @@ local function IsResearchDuplicateItemType(link)
     return isArmor or isWeapon or isJewelry
 end
 
+---Check whether a given item quality is included in the research duplicate filter settings.
+---@param saved table The saved variables table.
+---@param quality number ITEM_QUALITY_* constant.
+---@return boolean True if this quality level should be considered.
 local function IsResearchDuplicateQualityEnabled(saved, quality)
     local superiorQuality = ITEM_QUALITY_SUPERIOR or 3
     local epicQuality = ITEM_QUALITY_EPIC or 4
@@ -131,6 +153,9 @@ local function IsResearchDuplicateQualityEnabled(saved, quality)
     return true
 end
 
+---Check whether a trait type can actually be researched (not NONE, Ornate, or Intricate).
+---@param traitType number ITEM_TRAIT_TYPE_* constant.
+---@return boolean True if researchable.
 local function IsResearchableTraitType(traitType)
     if not traitType then
         return false
@@ -147,6 +172,10 @@ local function IsResearchableTraitType(traitType)
     return true
 end
 
+---Scan bag slots and group researchable items by type/trait to find duplicates.
+---@param saved table The saved variables table.
+---@param includeBank boolean Whether to also scan the bank.
+---@return table Groups keyed by type|trait, each with count, slots, and keepSlot.
 local function BuildResearchDuplicateGroups(saved, includeBank)
     local groups = {}
     local bags = { BAG_BACKPACK }
@@ -228,6 +257,15 @@ local function BuildResearchDuplicateGroups(saved, includeBank)
     return groups
 end
 
+---Build duplicate results from groups, identifying excess and keep slots.
+---@param saved table The saved variables table.
+---@param includeBank boolean Whether to include bank.
+---@return table dupes Sorted list of duplicate groups.
+---@return table excessSlots Map of excess unique IDs.
+---@return table keepSlots Map of keep unique IDs.
+---@return table excessToKeepIds Map of excess ID → keep ID.
+---@return table excessToKeepTraitTypes Map of excess ID → trait type.
+---@return table excessToKeepQualities Map of excess ID → quality.
 local function BuildResearchDuplicateResults(saved, includeBank)
     local groups = BuildResearchDuplicateGroups(saved, includeBank)
     local dupes = {}
@@ -264,6 +302,11 @@ local function BuildResearchDuplicateResults(saved, includeBank)
     return dupes, excessSlots, keepSlots, excessToKeepIds, excessToKeepTraitTypes, excessToKeepQualities
 end
 
+---Extract the bag ID and slot index from a slot control or slot data structure.
+---@param slotControl table|nil The inventory slot control.
+---@param slotData table|nil The slot data table.
+---@return number|nil bagId The bag identifier.
+---@return number|nil slotIndex The slot index.
 local function GetSlotBagAndIndex(slotControl, slotData)
     if slotData and ZO_Inventory_GetBagAndIndex then
         local b, s = ZO_Inventory_GetBagAndIndex(slotData)
@@ -304,6 +347,9 @@ local function GetSlotBagAndIndex(slotControl, slotData)
     return bag, slot
 end
 
+---Get the research status indicator child control from an inventory slot.
+---@param slotControl table The inventory slot control.
+---@return table|nil The indicator control (StatusIndicator / TraitInfo / ResearchIcon).
 local function GetSlotResearchIndicator(slotControl)
     if not slotControl or not slotControl.GetNamedChild then
         return nil
@@ -314,10 +360,13 @@ local function GetSlotResearchIndicator(slotControl)
         or slotControl:GetNamedChild("ResearchIcon")
 end
 
+---Mark the research duplicate cache as dirty so it will be rebuilt next time.
+---@param reason string Debug description of why the cache was invalidated.
 function MiniMap:InvalidateResearchDuplicateCache(reason)
     self._researchDuplicateCacheDirty = true
 end
 
+---Re-evaluate the overlay for every tracked slot control.
 function MiniMap:RefreshResearchDuplicateOverlays()
     if not self._researchDuplicateSlotControls then
         return
@@ -329,6 +378,10 @@ function MiniMap:RefreshResearchDuplicateOverlays()
     end
 end
 
+---Check if a specific inventory slot is an excess research duplicate (not the keep slot).
+---@param bagId number Bag identifier.
+---@param slotIndex number Slot index.
+---@return boolean True if the slot is an excess duplicate.
 function MiniMap:IsResearchDuplicateExcessSlot(bagId, slotIndex)
     if bagId ~= BAG_BACKPACK and bagId ~= BAG_BANK then
         return false
@@ -356,6 +409,10 @@ function MiniMap:IsResearchDuplicateExcessSlot(bagId, slotIndex)
     return self._researchDuplicateExcessSlots[uniqueId] or false
 end
 
+---Get the name of the item being kept instead of this excess duplicate slot.
+---@param bagId number Bag identifier.
+---@param slotIndex number Slot index.
+---@return string|nil The keep item name (with trait), or nil.
 function MiniMap:GetResearchDuplicateKeepItemName(bagId, slotIndex)
     local uniqueId = GetItemUniqueId(bagId, slotIndex)
     if not uniqueId then
@@ -385,6 +442,9 @@ function MiniMap:GetResearchDuplicateKeepItemName(bagId, slotIndex)
     return nil
 end
 
+---Update or create the research duplicate overlay (X mark and keep label) on an inventory slot.
+---@param slotControl table The inventory slot control.
+---@param slotData table|nil Slot data passed from the hook.
 function MiniMap:UpdateResearchDuplicateSlotOverlay(slotControl, slotData)
     if not slotControl then
         return
@@ -557,6 +617,10 @@ function MiniMap:UpdateResearchDuplicateSlotOverlay(slotControl, slotData)
     end
 end
 
+---Apply a quality-based colour to the keep label text.
+---@param keepLabel table The label control.
+---@param bagId number Bag identifier of the excess slot.
+---@param slotIndex number Slot index of the excess slot.
 function MiniMap:ApplyResearchDuplicateKeepLabelColor(keepLabel, bagId, slotIndex)
     local uniqueId = GetItemUniqueId(bagId, slotIndex)
     if uniqueId and self._researchDuplicateExcessToKeepQualities then
@@ -570,6 +634,7 @@ function MiniMap:ApplyResearchDuplicateKeepLabelColor(keepLabel, bagId, slotInde
     keepLabel:SetColor(0.2, 0.9, 0.2, 1)
 end
 
+---Hook into inventory slot setup functions to install research duplicate overlays.
 function MiniMap:InstallResearchDuplicateOverlays()
     if self._researchDuplicateOverlaysInstalled then
         return
@@ -610,6 +675,7 @@ function MiniMap:InstallResearchDuplicateOverlays()
     end
 end
 
+---Print a formatted list of research duplicate items to the chat debug channel.
 function MiniMap:ShowResearchDupes()
     local dupes = BuildResearchDuplicateResults(self.saved, true)
 

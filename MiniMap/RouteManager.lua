@@ -7,12 +7,21 @@ RouteManager = {
 }
 RouteManager.__index = RouteManager
 
+---Euclidean distance between two points.
+---@param x1 number
+---@param y1 number
+---@param x2 number
+---@param y2 number
+---@return number Distance.
 local function Distance(x1, y1, x2, y2)
     local dx = x1 - x2
     local dy = y1 - y2
     return math.sqrt(dx * dx + dy * dy)
 end
 
+---Calculate the total round-trip distance of a route (including return to start).
+---@param route table List of {x, y} points.
+---@return number Total distance.
 local function CalculateTotalDistance(route)
     if not route or #route < 2 then return 0 end
     local total = 0
@@ -23,6 +32,11 @@ local function CalculateTotalDistance(route)
     return total
 end
 
+---Solve a travelling-salesman route using nearest-neighbour heuristic with 2-opt refinement.
+---@param spots table List of {x, y} spot tables.
+---@param startX number Starting X.
+---@param startY number Starting Y.
+---@return table Optimised route (list of spot tables).
 local function SolveTSP(spots, startX, startY)
     if not spots or #spots == 0 then return {} end
     if #spots == 1 then return spots end
@@ -84,12 +98,16 @@ local function SolveTSP(spots, startX, startY)
     return route
 end
 
+---Initialise the route manager with saved variables.
+---@param savedVars table The saved variables table.
 function RouteManager:Init(savedVars)
     self._data = savedVars
     self._selectedCategories = {}
     self._useAllCategories = false
 end
 
+---Get the list of selected category keys (or {"all"} if all categories are active).
+---@return table List of category key strings.
 function RouteManager:GetSelectedCategories()
     if self._useAllCategories then
         return { "all" }
@@ -102,10 +120,15 @@ function RouteManager:GetSelectedCategories()
     return result
 end
 
+---Check whether a specific category is selected.
+---@param category string Category key.
+---@return boolean True if selected.
 function RouteManager:IsCategorySelected(category)
     return self._selectedCategories[category] == true
 end
 
+---Toggle a category on/off in the selection (disables "all" mode).
+---@param category string Category key.
 function RouteManager:ToggleCategory(category)
     self._useAllCategories = false
     if self._selectedCategories[category] then
@@ -115,6 +138,8 @@ function RouteManager:ToggleCategory(category)
     end
 end
 
+---Replace the selected categories with a specific list (disables "all" mode).
+---@param categories table List of category key strings.
 function RouteManager:SetSelectedCategories(categories)
     self._useAllCategories = false
     self._selectedCategories = {}
@@ -123,28 +148,40 @@ function RouteManager:SetSelectedCategories(categories)
     end
 end
 
+---Select all resource categories for routing.
 function RouteManager:SetAllCategories()
     self._selectedCategories = {}
     self._useAllCategories = true
 end
 
+---Deselect all resource categories.
 function RouteManager:ClearCategories()
     self._selectedCategories = {}
     self._useAllCategories = false
 end
 
+---Get the current calculated route.
+---@return table|nil List of {x, y} spot tables.
 function RouteManager:GetRoute()
     return self._currentRoute
 end
 
+---Check whether a route has been calculated and has points.
+---@return boolean True if a route exists with at least one point.
 function RouteManager:IsRouteActive()
     return self._currentRoute and #self._currentRoute > 0
 end
 
+---Clear the current route.
 function RouteManager:ClearRoute()
     self._currentRoute = nil
 end
 
+---Calculate a TSP-optimised route through selected spots, starting from the player.
+---@param playerX number Player world X.
+---@param playerY number Player world Y.
+---@param mapName string Current map key.
+---@return table|nil The calculated route (list of {x, y}), or nil if no spots.
 function RouteManager:CalculateRoute(playerX, playerY, mapName)
     if not playerX or not playerY then
         return nil
@@ -186,6 +223,11 @@ function RouteManager:CalculateRoute(playerX, playerY, mapName)
     return self._currentRoute
 end
 
+---Recalculate the route only if the spot counts or map have changed since last calculation.
+---@param playerX number Player world X.
+---@param playerY number Player world Y.
+---@param mapName string Current map key.
+---@return table|nil The current or newly-calculated route.
 function RouteManager:RecalculateIfNeeded(playerX, playerY, mapName)
     local categoriesChanged = false
     self._lastCategoryCounts = self._lastCategoryCounts or {}
@@ -220,6 +262,8 @@ function RouteManager:RecalculateIfNeeded(playerX, playerY, mapName)
     return self._currentRoute
 end
 
+---Get the list of line segments that make up the route (including closing segment).
+---@return table List of {x1, y1, x2, y2} segment tables.
 function RouteManager:GetRouteSegments()
     if not self._currentRoute or #self._currentRoute < 2 then
         return {}
@@ -245,6 +289,8 @@ function RouteManager:GetRouteSegments()
     return segments
 end
 
+---Get a human-readable summary of the current route.
+---@return string Route info string.
 function RouteManager:GetRouteInfo()
     if not self._currentRoute then
         return "No route"

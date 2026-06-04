@@ -1,10 +1,13 @@
 
+---Print a formatted MiniMap debug message.
+---@param message string The message to print.
 local function Print(message)
     if d then
         d("|c80d0ffMiniMap|r " .. message)
     end
 end
 
+---Register the LibAddonMenu-2.0 settings panel and all option controls for the minimap.
 function MiniMap:RegisterSettingsMenu()
     local LAM = LibAddonMenu2
     if not LAM then

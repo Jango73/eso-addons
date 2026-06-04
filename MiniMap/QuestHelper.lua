@@ -1,10 +1,14 @@
 
+---Print a formatted MiniMap debug message.
+---@param message string The message to print.
 local function Print(message)
     if d then
         d("|c80d0ffMiniMap|r " .. message)
     end
 end
 
+---Get the currently focused/assisted quest index.
+---@return number|nil The quest index, or nil if none is focused.
 function MiniMap:GetFocusedQuestIndex()
     if QUEST_JOURNAL_MANAGER and QUEST_JOURNAL_MANAGER.GetFocusedQuestIndex then
         local questIndex = QUEST_JOURNAL_MANAGER:GetFocusedQuestIndex()
@@ -26,6 +30,8 @@ function MiniMap:GetFocusedQuestIndex()
     return nil
 end
 
+---Get all quest target positions for the focused quest, sorted by priority (breadcrumbs first, then distance).
+---@return table List of position tables {x, y, isBreadcrumb, distanceSq}.
 function MiniMap:GetAllQuestTargetPositions()
     local questIndex = self:GetFocusedQuestIndex()
     if not questIndex or not WORLD_MAP_QUEST_BREADCRUMBS or not self.playerMapX or not self.playerMapY then
@@ -74,6 +80,7 @@ function MiniMap:GetAllQuestTargetPositions()
     return positions
 end
 
+---Find and activate the closest quest to the player (by objective position).
 function MiniMap:ActivateClosestQuest()
     local px, py = self.playerMapX, self.playerMapY
     if not px or not py then
@@ -158,6 +165,9 @@ function MiniMap:ActivateClosestQuest()
     end
 end
 
+---Get the nearest wayshrine to the player's current position.
+---@return number|nil x Wayshrine world X.
+---@return number|nil y Wayshrine world Y.
 function MiniMap:GetNearestWayshrinePosition()
     local px, py = self.playerMapX, self.playerMapY
     if not px or not py then
@@ -166,6 +176,12 @@ function MiniMap:GetNearestWayshrinePosition()
     return self:GetNearestWayshrineToPosition(px, py)
 end
 
+---Find the nearest wayshrine (any) to a given position.
+---@param px number World X.
+---@param py number World Y.
+---@return number|nil x Nearest wayshrine X.
+---@return number|nil y Nearest wayshrine Y.
+---@return number|nil dist Euclidean distance to the wayshrine.
 function MiniMap:GetNearestWayshrineToPosition(px, py)
     if not px or not py then
         return nil, nil, nil
@@ -198,6 +214,12 @@ function MiniMap:GetNearestWayshrineToPosition(px, py)
     return nil, nil, nil
 end
 
+---Find the nearest discovered wayshrine to a given position.
+---@param px number World X.
+---@param py number World Y.
+---@return number|nil x Nearest discovered wayshrine X.
+---@return number|nil y Nearest discovered wayshrine Y.
+---@return number|nil dist Euclidean distance to the wayshrine.
 function MiniMap:GetNearestKnownWayshrineToPosition(px, py)
     if not px or not py then
         return nil, nil, nil
@@ -230,6 +252,7 @@ function MiniMap:GetNearestKnownWayshrineToPosition(px, py)
     return nil, nil, nil
 end
 
+---Periodic update: determine if a wayshrine route is faster than walking and set shortcut/dest fields.
 function MiniMap:UpdateQuestIndicatorWayshrine()
     local now = GetFrameTimeMilliseconds and GetFrameTimeMilliseconds() or 0
     if now < self.nextWayshrineRouteUpdateMs then

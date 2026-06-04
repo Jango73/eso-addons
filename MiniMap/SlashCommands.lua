@@ -1,16 +1,23 @@
 
+---Print a formatted MiniMap debug message.
+---@param message string The message to print.
 local function Print(message)
     if d then
         d("|c80d0ffMiniMap|r " .. message)
     end
 end
 
+---Print a message to the chat frame.
+---@param message string The message text to display.
 local function Echo(message)
     if CHAT_SYSTEM then
         CHAT_SYSTEM:AddMessage(message)
     end
 end
 
+---Normalise a corner/position string (supports short aliases and French names).
+---@param value string Raw user input.
+---@return string|nil Normalised corner key, or nil if invalid.
 local function NormalizeCorner(value)
     value = zo_strlower(value or "")
 
@@ -35,6 +42,9 @@ local function NormalizeCorner(value)
     return CORNERS[value] and value or nil
 end
 
+---Check whether a string is a valid resource category key.
+---@param cat string The category key to test.
+---@return boolean True if the category exists in RESOURCE_CATEGORIES.
 local function IsValidCategory(cat)
     for _, c in ipairs(RESOURCE_CATEGORIES) do
         if c.key == cat then return true end
@@ -42,6 +52,9 @@ local function IsValidCategory(cat)
     return false
 end
 
+---Get a comma-separated list of all resource category keys.
+---@param separator string|nil Separator between keys (default ", ").
+---@return string The category list string.
 local function GetCategoryList(separator)
     local categories = {}
     for _, c in ipairs(RESOURCE_CATEGORIES) do
@@ -52,6 +65,8 @@ end
 
 local pendingClearConfirm = nil
 
+---Process a /minimap slash command and dispatch to the appropriate handler.
+---@param arguments string The full argument string after "/minimap".
 function MiniMap:HandleSlashCommand(arguments)
     local command, value = zo_strmatch(arguments or "", "^(%S*)%s*(.*)$")
     command = zo_strlower(command or "")
@@ -216,6 +231,7 @@ function MiniMap:HandleSlashCommand(arguments)
     end
 end
 
+---Keybind handler to activate the closest quest.
 function MINIMAP_CLOSEST_QUEST_KEYBIND()
     MiniMap:ActivateClosestQuest()
 end

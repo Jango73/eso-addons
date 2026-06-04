@@ -9,6 +9,8 @@ local SUPPORTED_LANGUAGES = {
     zh = true,
 }
 
+---Detect the current game language and return a supported locale code (default "en").
+---@return string Two-letter language code ("en", "fr", "es", "ja", "de", "ru", "zh").
 function Locale.GetLanguage()
     local language = GetCVar and GetCVar("Language.2") or nil
     language = string.sub(zo_strlower(language or ""), 1, 2)
@@ -1007,17 +1009,26 @@ Locale.STRINGS = {
     },
 }
 
+---Look up a localised string for the current language, falling back to English then key.
+---@param key string The string key.
+---@return string The translated string.
 function Locale.GetString(key)
     local lang = Locale.GetLanguage()
     local strings = Locale.STRINGS[lang] or Locale.STRINGS.en
     return strings[key] or Locale.STRINGS.en[key] or key
 end
 
+---Get the localised label for a cardinal direction.
+---@param direction string Direction suffix ("N", "S", "E", "W").
+---@return string The translated compass label.
 function Locale.GetCompassDirection(direction)
     local key = "compass" .. direction
     return Locale.GetString(key)
 end
 
+---Get the name of a trait, trying the ESO native API first, then falling back to localised strings.
+---@param traitType number The ITEM_TRAIT_TYPE_* constant.
+---@return string The trait name.
 function Locale.GetTraitName(traitType)
     if traitType == nil then
         return "Trait ?"

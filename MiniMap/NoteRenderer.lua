@@ -9,14 +9,23 @@ local EDITOR_WIDTH = 500
 local EDITOR_HEIGHT = 400
 local NOTE_ITEM_HEIGHT = 28
 
+---Set the centre colour of a backdrop control from an RGBA table.
+---@param control table The backdrop control.
+---@param color table RGBA colour array.
 local function SetCenterColor(control, color)
     control:SetCenterColor(color[1], color[2], color[3], color[4])
 end
 
+---Set the edge colour of a backdrop control from an RGBA table.
+---@param control table The backdrop control.
+---@param color table RGBA colour array.
 local function SetEdgeColor(control, color)
     control:SetEdgeColor(color[1], color[2], color[3], color[4])
 end
 
+---Brighten an RGBA colour for a raised/hover edge effect.
+---@param color table Base RGBA colour.
+---@return table Brightened RGBA colour.
 local function GetRaisedEdgeColor(color)
     return {
         math.min(color[1] + 0.25, 1),
@@ -26,6 +35,10 @@ local function GetRaisedEdgeColor(color)
     }
 end
 
+---Trim whitespace from a note title and return a fallback if empty.
+---@param title string|nil Raw title input.
+---@param fallback string|nil Default value if title is empty.
+---@return string Normalised title.
 local function NormalizeNoteTitle(title, fallback)
     title = title or ""
     if zo_strtrim then
@@ -39,11 +52,14 @@ local function NormalizeNoteTitle(title, fallback)
     return title
 end
 
+---Initialise the note renderer with its owning minimap and create all controls.
+---@param owner table The owning MiniMap object.
 function NoteRenderer:Init(owner)
     self.owner = owner
     self:CreateControls()
 end
 
+---Create all note panel controls (panel, scroll buttons, list, editor).
 function NoteRenderer:CreateControls()
     local notesPanel = WINDOW_MANAGER:CreateTopLevelWindow("MiniMapNotesPanel")
     notesPanel:SetDrawTier(DT_HIGH)
@@ -78,6 +94,10 @@ function NoteRenderer:CreateControls()
     headerLabel:SetColor(1, 1, 1, 1)
     headerLabel:SetText("Notes")
 
+    ---Create a scroll up/down button for the notes list.
+    ---@param name string Control name.
+    ---@param labelText string Button label text.
+    ---@return table The created button control.
     local function CreateScrollButton(name, labelText)
         local button = WINDOW_MANAGER:CreateControl(name, notesPanel, CT_BUTTON)
         button:SetDimensions(24, 24)
@@ -123,6 +143,7 @@ function NoteRenderer:CreateControls()
     self:CreateEditor()
 end
 
+---Create the MAX_VISIBLE note item button controls inside the notes list.
 function NoteRenderer:CreateNoteItems()
     self.noteItems = {}
     for i = 1, self.MAX_VISIBLE do
@@ -148,6 +169,7 @@ function NoteRenderer:CreateNoteItems()
     end
 end
 
+---Create the note editor window with title, text area, and navigation/action buttons.
 function NoteRenderer:CreateEditor()
     local editor = WINDOW_MANAGER:CreateTopLevelWindow("MiniMapNotesEditor")
     editor:SetDrawTier(DT_HIGH)
@@ -220,6 +242,10 @@ function NoteRenderer:CreateEditor()
 
     local closeBtn = WINDOW_MANAGER:CreateControl("MiniMapNotesEditorClose", editor, CT_BUTTON)
     closeBtn:SetDimensions(btnHeight, btnHeight)
+    ---Apply editor button styling (backdrop, colours, edge texture).
+    ---@param btn table The button control.
+    ---@param color table RGBA centre colour.
+    ---@return table The created backdrop control.
     local function StyleButton(btn, color)
         local btnBg = WINDOW_MANAGER:CreateControl(btn:GetName() .. "Bg", btn, CT_BACKDROP)
         btnBg:SetAnchorFill(btn)
@@ -275,6 +301,8 @@ function NoteRenderer:CreateEditor()
     self.scrollOffset = 0
 end
 
+---Recalculate panel size, position, and layout based on minimap corner and note count.
+---@param noteCount number Total number of notes.
 function NoteRenderer:ApplyLayout(noteCount)
     if not self.notesPanel then
         return
@@ -336,6 +364,8 @@ function NoteRenderer:ApplyLayout(noteCount)
     self.scrollDownButton:SetHidden(not visible or noteCount <= self.MAX_VISIBLE)
 end
 
+---Refresh the visible note list, respecting scroll offset and clamping.
+---@param noteCount number Total number of notes.
 function NoteRenderer:Update(noteCount)
     if not self.notesList or not self.noteItems then
         return
@@ -374,6 +404,8 @@ function NoteRenderer:Update(noteCount)
     end
 end
 
+---Scroll the notes list up or down by a delta.
+---@param delta number +1 for down, -1 for up.
 function NoteRenderer:ScrollNotes(delta)
     local count = NoteDatabase:GetNoteCount()
     local maxScroll = math.max(0, count - self.MAX_VISIBLE)
@@ -381,6 +413,8 @@ function NoteRenderer:ScrollNotes(delta)
     self:Update(count)
 end
 
+---Open the editor for a specific note by index.
+---@param index number 1-based note index.
 function NoteRenderer:ShowEditor(index)
     local data = NoteDatabase:GetAllNotes() or {}
     if index < 1 or index > #data then
@@ -430,6 +464,7 @@ function NoteRenderer:ShowEditor(index)
     end
 end
 
+---Close the note editor and save the current note if one was open.
 function NoteRenderer:CloseEditor()
     if self.editorTitle and self.editorTitle.LoseFocus then
         self.editorTitle:LoseFocus()
@@ -450,6 +485,7 @@ function NoteRenderer:CloseEditor()
     self:Update(NoteDatabase:GetNoteCount())
 end
 
+---Navigate to the next note in the editor, wrapping to the first.
 function NoteRenderer:GoToNextNote()
     local count = NoteDatabase:GetNoteCount()
     if count == 0 then
@@ -468,6 +504,7 @@ function NoteRenderer:GoToNextNote()
     self:ShowEditor(newIndex)
 end
 
+---Navigate to the previous note in the editor, wrapping to the last.
 function NoteRenderer:GoToPrevNote()
     local count = NoteDatabase:GetNoteCount()
     if count == 0 then
@@ -486,6 +523,7 @@ function NoteRenderer:GoToPrevNote()
     self:ShowEditor(newIndex)
 end
 
+---Persist the currently-edited note title and content to the database.
 function NoteRenderer:SaveCurrentNote()
     if self.currentEditIndex > 0 and self.editorText and self.editorTitle then
         local text = self.editorText:GetText()
@@ -499,6 +537,7 @@ function NoteRenderer:SaveCurrentNote()
     end
 end
 
+---Delete the currently-edited note and close the editor.
 function NoteRenderer:DeleteCurrentNote()
     if self.currentEditIndex > 0 then
         NoteDatabase:DeleteNote(self.currentEditIndex)
@@ -513,6 +552,10 @@ function NoteRenderer:DeleteCurrentNote()
     end
 end
 
+---Add a new note and update the UI, scrolling to show it.
+---@param name string Note name.
+---@param content string Note content.
+---@return boolean True if the note was added.
 function NoteRenderer:AddNewNote(name, content)
     local added, isNew = NoteDatabase:AddNote(name, content)
     if added then
@@ -527,26 +570,38 @@ function NoteRenderer:AddNewNote(name, content)
     return added
 end
 
+---Get the add-note button control.
+---@return table|nil The button control.
 function NoteRenderer:GetAddButton()
     return self.addButton
 end
 
+---Get the editor close button control.
+---@return table|nil The button control.
 function NoteRenderer:GetCloseButton()
     return self.closeBtn
 end
 
+---Get the editor previous-note button control.
+---@return table|nil The button control.
 function NoteRenderer:GetPrevButton()
     return self.prevBtn
 end
 
+---Get the editor next-note button control.
+---@return table|nil The button control.
 function NoteRenderer:GetNextButton()
     return self.nextBtn
 end
 
+---Get the editor delete-note button control.
+---@return table|nil The button control.
 function NoteRenderer:GetDeleteButton()
     return self.deleteBtn
 end
 
+---Get the list of note item controls.
+---@return table|nil Array of {control, label, index}.
 function NoteRenderer:GetNoteItems()
     return self.noteItems
 end

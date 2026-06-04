@@ -22,6 +22,8 @@ RESOURCE_CATEGORIES = {
     { key = 'world_boss', color = { 0.8, 0.1, 0.1, 1 } },
 }
 
+---Initialise the spot database with saved variables and built-in defaults.
+---@param savedVars table The ZO_SavedVars table with a "data" key.
 function SpotDatabase:Init(savedVars)
     self._metadata = savedVars
     if not self._metadata["data"] then
@@ -32,12 +34,18 @@ function SpotDatabase:Init(savedVars)
     self._mergedCache = {}
 end
 
+---Print a message to the chat frame.
+---@param message string The message text to display.
 local function Echo(message)
     if CHAT_SYSTEM then
         CHAT_SYSTEM:AddMessage(message)
     end
 end
 
+---Check whether two spots are within the duplicate threshold distance.
+---@param s1 table First spot {x, y}.
+---@param s2 table Second spot {x, y}.
+---@return boolean True if the spots are considered duplicates.
 local function IsDuplicate(s1, s2)
     if not s1 or not s2 then return false end
     local dx = s1.x - s2.x
@@ -45,6 +53,9 @@ local function IsDuplicate(s1, s2)
     return (dx * dx + dy * dy) <= (MINIMAP_SPOT_DUPLICATE_THRESHOLD * MINIMAP_SPOT_DUPLICATE_THRESHOLD)
 end
 
+---Append spots from a source list to a target list, skipping duplicates.
+---@param target table Destination list.
+---@param source table Source list of {x, y} spots.
 local function AppendUniqueSpots(target, source)
     if type(source) ~= "table" then
         return
@@ -66,6 +77,9 @@ local function AppendUniqueSpots(target, source)
     end
 end
 
+---Append all categories/spots from a source map into a target merged map, skipping duplicates.
+---@param target table Destination merged map (category → list of spots).
+---@param source table Source map data (category → list of spots).
 local function AppendMapData(target, source)
     if type(source) ~= "table" then
         return
@@ -81,6 +95,8 @@ local function AppendMapData(target, source)
     end
 end
 
+---Invalidate the merged cache for a specific map (or all maps).
+---@param mapName string|nil Map key to invalidate, or nil for all.
 function SpotDatabase:InvalidateMergedCache(mapName)
     if not self._mergedCache then
         return
@@ -92,6 +108,10 @@ function SpotDatabase:InvalidateMergedCache(mapName)
     end
 end
 
+---Get built-in spots for a category and map.
+---@param category string Category key.
+---@param mapName string|nil Map key (auto-detected if nil).
+---@return table List of built-in spots.
 function SpotDatabase:GetBuiltinSpots(category, mapName)
     if not category then return {} end
     local currentMap = mapName or MiniMapRenderUtils.GetCurrentMapKey()
@@ -102,6 +122,13 @@ function SpotDatabase:GetBuiltinSpots(category, mapName)
     return self._builtinData[currentMap][category] or {}
 end
 
+---Add a resource spot, updating duplicate position or rejecting cross-category/builtin duplicates.
+---@param x number World X.
+---@param y number World Y.
+---@param category string Category key.
+---@param mapName string|nil Map key (auto-detected if nil).
+---@return boolean added True if the operation succeeded.
+---@return boolean isNew True if a brand new spot was created (vs updating an existing one).
 function SpotDatabase:AddSpot(x, y, category, mapName)
     if not self._data then
         return false
@@ -160,6 +187,8 @@ function SpotDatabase:AddSpot(x, y, category, mapName)
     return true, true
 end
 
+---Remove duplicate spots (within threshold) across all zones and categories.
+---@return number removed Count of removed duplicate spots.
 function SpotDatabase:CleanDuplicates()
     local removed = 0
     if not self._data then
@@ -203,6 +232,13 @@ function SpotDatabase:CleanDuplicates()
     return removed
 end
 
+---Find the nearest spot to a position in a given category.
+---@param px number World X.
+---@param py number World Y.
+---@param category string Category key.
+---@param maxCount number|nil Unused, reserved.
+---@param mapName string|nil Map key (auto-detected if nil).
+---@return table|nil Nearest spot {x, y, category, distance}, or nil.
 function SpotDatabase:GetNearestSpot(px, py, category, maxCount, mapName)
     if not px or not py then return nil end
     maxCount = maxCount or 1
@@ -229,6 +265,12 @@ function SpotDatabase:GetNearestSpot(px, py, category, maxCount, mapName)
     return nil
 end
 
+---Get the nearest spot per category, sorted by distance.
+---@param px number World X.
+---@param py number World Y.
+---@param maxCount number|nil Unused, reserved.
+---@param mapName string|nil Map key (auto-detected if nil).
+---@return table Sorted list of nearest spots per category.
 function SpotDatabase:GetNearestSpotByCategory(px, py, maxCount, mapName)
     if not px or not py then return {} end
     maxCount = maxCount or 1
@@ -247,6 +289,9 @@ function SpotDatabase:GetNearestSpotByCategory(px, py, maxCount, mapName)
     return results
 end
 
+---Clear spots for a specific zone/category, or all zones if no zone given.
+---@param zoneName string|nil Zone map key (nil = all zones).
+---@param category string|nil Category key (nil = all categories in the zone).
 function SpotDatabase:Clear(zoneName, category)
     if zoneName then
         if category then
@@ -268,6 +313,14 @@ function SpotDatabase:Clear(zoneName, category)
     end
 end
 
+---Remove all spots within a radius of a position, optionally restricted to a category.
+---@param x number World X.
+---@param y number World Y.
+---@param radius number Radius in world units.
+---@param category string|nil Category key (nil = all categories).
+---@param mapName string|nil Map key (auto-detected if nil).
+---@return number removed Count of removed spots.
+---@return number total Count of spots examined.
 function SpotDatabase:RemoveSpotsInRadius(x, y, radius, category, mapName)
     if not self._data or not x or not y then return 0, 0 end
     mapName = mapName or MiniMapRenderUtils.GetCurrentMapKey()
@@ -321,6 +374,11 @@ function SpotDatabase:RemoveSpotsInRadius(x, y, radius, category, mapName)
     return removed, total
 end
 
+---Mark nearby resourcable spots as collected (sets collectedTs to now).
+---Skips non-respawning categories.
+---@param x number World X.
+---@param y number World Y.
+---@param mapName string|nil Map key (auto-detected if nil).
 function SpotDatabase:SetCollectedTimestamp(x, y, mapName)
     if not self._data or not x or not y then return end
     local currentMap = mapName or MiniMapRenderUtils.GetCurrentMapKey()
@@ -358,6 +416,10 @@ function SpotDatabase:SetCollectedTimestamp(x, y, mapName)
     end
 end
 
+---Get the merged (user + builtin) spots for a given category on the current map.
+---@param category string Category key.
+---@param mapName string|nil Map key (auto-detected if nil).
+---@return table List of spots for the category.
 function SpotDatabase:GetSpots(category, mapName)
     if not category then return {} end
     local currentMap = mapName or MiniMapRenderUtils.GetCurrentMapKey()
@@ -366,6 +428,9 @@ function SpotDatabase:GetSpots(category, mapName)
     return mapData[category] or {}
 end
 
+---Get all spots for a map, merged from user data and built-in data (cached).
+---@param mapName string|nil Map key (auto-detected if nil).
+---@return table Merged map data: category → list of spots.
 function SpotDatabase:GetSpotsByMap(mapName)
     local currentMap = mapName or MiniMapRenderUtils.GetCurrentMapKey()
     if not currentMap then return {} end
@@ -387,6 +452,10 @@ function SpotDatabase:GetSpotsByMap(mapName)
     return merged
 end
 
+---Get the total spot count, optionally filtered by category and/or map.
+---@param category string|nil Category key (nil = all categories).
+---@param mapName string|nil Map key (nil = all maps).
+---@return number Total spot count.
 function SpotDatabase:GetSpotCount(category, mapName)
     if mapName then
         if category then
@@ -413,6 +482,8 @@ function SpotDatabase:GetSpotCount(category, mapName)
     end
 end
 
+---Get the set of all map keys that have user or built-in spots.
+---@return table Map of map key → true.
 function SpotDatabase:GetAllMaps()
     local maps = {}
     for mapName, mapData in pairs(self._data or {}) do
@@ -428,6 +499,9 @@ function SpotDatabase:GetAllMaps()
     return maps
 end
 
+---Map a LOOT_TYPE constant to a resource category key.
+---@param lootType number The LOOT_TYPE_* constant.
+---@return string|nil The corresponding category key, or nil.
 function SpotDatabase:GetResourceCategory(lootType)
     if lootType == MINIMAP_LOOT_TYPE_RUNE then return 'rune'
     elseif lootType == MINIMAP_LOOT_TYPE_WATER then return 'water'
